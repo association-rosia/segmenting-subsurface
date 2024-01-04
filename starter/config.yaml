@@ -1,0 +1,50 @@
+name: example
+batch_size: 8
+classes: 99
+
+epochs: 500
+gpus: 1
+iterations: -1
+
+loss:
+  mode: multiclass
+  name: dice
+      
+metric:
+  name: iou
+  params:
+    threshold: 0.2
+    
+model:
+  name: unet
+  params:
+    encoder_name: "resnet34"        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+    encoder_weights: "imagenet"     # use `imagenet` pre-trained weights for encoder initialization
+    in_channels: 1                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+    classes: 99
+    
+    
+model_checkpoint:
+  filename: '{epoch}-{val_loss:.3f}-{val_metric:.3f}'
+  mode: max
+  monitor: val_metric
+  save_last: True
+  verbose: True
+  every_n_epochs: 1 
+  save_top_k: 3
+
+
+lr: 0.01
+
+optimizer:
+  name: adam
+  params:
+    lr: 0.01
+    weight_decay: 0.000001
+
+scheduler:
+  additional_params:
+    monitor: val_loss
+  name: ExponentialLR
+  params:
+    gamma: 0.9
