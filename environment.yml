@@ -1,0 +1,6 @@
+name: segmenting-subsurface-env
+dependencies:
+  - python=3.10.*
+  - pip
+  - pip:
+      - pyyaml
