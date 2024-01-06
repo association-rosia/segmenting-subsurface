@@ -1,0 +1,5 @@
+data:
+  raw:
+    root: 'data/raw'
+    train: 'data/raw/train'
+    test: 'data/raw/test'
