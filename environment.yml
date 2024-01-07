@@ -4,3 +4,6 @@ dependencies:
   - pip
   - pip:
       - pyyaml
+      - tqdm
+      - torch
+      - numpy
