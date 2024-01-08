@@ -5,3 +5,10 @@ path:
       root: 'data/raw'
       train: 'data/raw/train'
       test: 'data/raw/test'
+
+data:
+  stats:
+    min: 0
+    max: 0
+    mean: 0
+    std: 0

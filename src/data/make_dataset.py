@@ -4,6 +4,8 @@ from glob import glob
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
+from transformers import Mask2FormerImageProcessor
 
 import utils
 
@@ -13,6 +15,13 @@ class SegSubDataset(Dataset):
         self.args = args
         self.items = self.get_items()
 
+        # self.transform = A.Compose([
+        #     A.Resize(width=512, height=512),
+        #     A.Normalize(mean=ADE_MEAN, std=ADE_STD),
+        # ])
+
+        self.processor = Mask2FormerImageProcessor()
+
     def __len__(self):
         return len(self.items)
 
@@ -20,7 +29,7 @@ class SegSubDataset(Dataset):
         item = self.items[idx]
         image = self.get_image(item)
         label = self.get_label(item)
-        
+
         return image, label
 
     def get_slice(self, item):
@@ -81,17 +90,65 @@ def get_volumes(config, set):
     return volumes
 
 
-if __name__ == '__main__':
-    from torch.utils.data import DataLoader
+def compute_image_mean_std(config):
+    def min_max_scaling(vol, min, max):
+        vol = (vol - min) / (max - min)
 
+        return vol
+
+    volumes = get_volumes(config, set='train')
+
+    mins = []
+    print('\nCompute min:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        mins.append(np.min(vol))
+
+    min = np.min(mins)
+
+    maxs = []
+    print('\nCompute max:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        maxs.append(np.max(vol))
+
+    max = np.max(maxs)
+
+    means = []
+    print('\nCompute mean:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        vol = min_max_scaling(vol, min, max)
+        means.append(np.mean(vol))
+
+    mean = np.mean(means)
+
+    vars = []
+    print('\nCompute std:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        vol = min_max_scaling(vol, min, max)
+        vars.append(np.mean((vol - mean) ** 2))
+
+    std = np.sqrt(np.mean(vars))
+
+    print('\nmin', min)
+    print('max', max)
+    print('mean', mean)
+    print('std', std)
+
+
+if __name__ == '__main__':
     config = utils.get_config()
 
-    set = 'train'
-    train_volumes = get_volumes(config, set=set)
-    args = {'set': set, 'volumes': train_volumes, 'dim': '0,1'}
-    train_dataset = SegSubDataset(args)
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False)
+    compute_image_mean_std(config)
 
-    for slice, label in train_dataloader:
-        print(slice.shape, label.shape)
-        break
+    # set = 'train'
+    # train_volumes = get_volumes(config, set=set)
+    # args = {'set': set, 'volumes': train_volumes, 'dim': '0,1', config: config}
+    # train_dataset = SegSubDataset(args)
+    # train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False)
+    #
+    # for slice, label in train_dataloader:
+    #     print(slice.shape, label.shape)
+    #     break

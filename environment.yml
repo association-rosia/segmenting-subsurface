@@ -7,3 +7,4 @@ dependencies:
       - tqdm
       - torch
       - numpy
+      - transformers
