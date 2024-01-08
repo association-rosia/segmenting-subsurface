@@ -11,6 +11,8 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import Mask2FormerImageProcessor
 
+import torchvision.transforms.functional as F
+
 import utils
 
 
@@ -19,22 +21,29 @@ class SegSubDataset(Dataset):
         self.args = args
         self.items = self.get_items()
 
-        # self.transform = A.Compose([
-        #     A.Resize(width=512, height=512),
-        #     A.Normalize(mean=ADE_MEAN, std=ADE_STD),
-        # ])
-
-        self.processor = Mask2FormerImageProcessor()
+        self.processor = Mask2FormerImageProcessor(
+            num_labels=1,
+            do_resize=False,
+            do_rescale=False,
+            image_mean=args['config']['data']['stats']['mean'],
+            image_std=args['config']['data']['stats']['std']
+        )
 
     def __len__(self):
         return len(self.items)
 
     def __getitem__(self, idx):
         item = self.items[idx]
-        image = self.get_image(item)
-        label = self.get_label(item)
 
-        return image, label
+        image = self.get_image(item)
+        image = self.scale(image)
+        image = self.resize(image)
+        inputs = self.processor.preprocess(image)
+
+        label = self.get_label(item)
+        label = self.resize(label)
+
+        return inputs, label
 
     def get_slice(self, item):
         volume = np.load(item['volume'], allow_pickle=True)
@@ -51,6 +60,18 @@ class SegSubDataset(Dataset):
     def get_image(self, item):
         slice = self.get_slice(item)
         image = torch.stack([slice, slice, slice], dim=0)
+
+        return image
+
+    def scale(self, image):
+        min = self.args['config']['data']['stats']['min']
+        max = self.args['config']['data']['stats']['max']
+        image = (image - min) / (max - min)
+
+        return image
+
+    def resize(self, image):
+        image = F.resize(image, (self.args['config']['data']['size'], self.args['config']['data']['size']))
 
         return image
 
@@ -143,16 +164,20 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
+    from torch.utils.data import DataLoader
+
     config = utils.get_config()
 
-    compute_image_mean_std(config)
+    # compute_image_mean_std(config)
 
-    # set = 'train'
-    # train_volumes = get_volumes(config, set=set)
-    # args = {'set': set, 'volumes': train_volumes, 'dim': '0,1', config: config}
-    # train_dataset = SegSubDataset(args)
-    # train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False)
-    #
-    # for slice, label in train_dataloader:
-    #     print(slice.shape, label.shape)
-    #     break
+    set = 'train'
+    train_volumes = get_volumes(config, set=set)
+    args = {'config': config, 'set': set, 'volumes': train_volumes, 'dim': '0,1'}
+    train_dataset = SegSubDataset(args)
+    train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False)
+
+    for inputs, label in train_dataloader:
+        print('\npixel_values', inputs['pixel_values'][0].shape)
+        print('pixel_mask', inputs['pixel_mask'][0].shape)
+        print('label', label.shape)
+        break

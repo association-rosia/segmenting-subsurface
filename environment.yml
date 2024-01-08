@@ -6,5 +6,6 @@ dependencies:
       - pyyaml
       - tqdm
       - torch
+      - torchvision
       - numpy
       - transformers

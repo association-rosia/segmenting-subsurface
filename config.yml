@@ -7,8 +7,9 @@ path:
       test: 'data/raw/test'
 
 data:
+  size: 384
   stats:
-    min: 0
-    max: 0
-    mean: 0
-    std: 0
+    min: -1215.0
+    max: 1930.0
+    mean: 0.3865
+    std: 0.03485
