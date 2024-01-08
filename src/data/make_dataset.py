@@ -1,4 +1,8 @@
 import os
+import sys
+
+sys.path.append(os.curdir)
+
 from glob import glob
 
 import numpy as np
