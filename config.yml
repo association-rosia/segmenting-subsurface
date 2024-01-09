@@ -3,3 +3,6 @@ data:
     root: 'data/raw'
     train: 'data/raw/train'
     test: 'data/raw/test'
+  dataloader:
+    batch_size: 64
+    num_workers: 12
