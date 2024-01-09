@@ -7,7 +7,9 @@ path:
       test: 'data/raw/test'
 
 data:
-  size: 384
+  size:
+    height: 384
+    width: 384
   stats:
     min: -1215.0
     max: 1930.0

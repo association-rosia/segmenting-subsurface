@@ -4,14 +4,11 @@ import sys
 sys.path.append(os.curdir)
 
 from glob import glob
-
-import numpy as np
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import Mask2FormerImageProcessor
-
-import torchvision.transforms.functional as F
 
 import utils
 
@@ -22,11 +19,14 @@ class SegSubDataset(Dataset):
         self.items = self.get_items()
 
         self.processor = Mask2FormerImageProcessor(
-            num_labels=1,
-            do_resize=False,
+            size={
+                'height': args['config']['data']['size']['height'],
+                'width': args['config']['data']['size']['width']
+            },
             do_rescale=False,
             image_mean=args['config']['data']['stats']['mean'],
-            image_std=args['config']['data']['stats']['std']
+            image_std=args['config']['data']['stats']['std'],
+            ignore_index=255
         )
 
     def __len__(self):
@@ -37,13 +37,19 @@ class SegSubDataset(Dataset):
 
         image = self.get_image(item)
         image = self.scale(image)
-        image = self.resize(image)
-        inputs = self.processor.preprocess(image)
 
-        label = self.get_label(item)
-        label = self.resize(label)
+        label, instance_id_to_semantic_id = self.get_label(item)
 
-        return inputs, label
+        inputs = self.processor(
+            images=image,
+            segmentation_maps=label,
+            instance_id_to_semantic_id=instance_id_to_semantic_id,
+            return_tensors='pt'
+        )
+
+        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+
+        return inputs
 
     def get_slice(self, item):
         volume = np.load(item['volume'], allow_pickle=True)
@@ -70,25 +76,20 @@ class SegSubDataset(Dataset):
 
         return image
 
-    def resize(self, image):
-        image = F.resize(image, (self.args['config']['data']['size'], self.args['config']['data']['size']))
-
-        return image
-
     def get_label(self, item):
         item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
         slice = self.get_slice(item)
         label = slice - torch.min(slice)
-        label = torch.stack([torch.zeros(label.shape), label], dim=0)
+        label = label.to(torch.uint8)
+        instance_id_to_semantic_id = {int(i): 1 for i in torch.unique(label).tolist()}
 
-        return label
+        return label, instance_id_to_semantic_id
 
     def get_items(self):
         slices = []
         volumes = self.args['volumes']
 
         for volume in volumes:
-            # vol = np.load(volume, allow_pickle=True)
             slices += self.get_items_from_volume(volume)
 
         return slices
