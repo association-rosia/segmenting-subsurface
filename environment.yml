@@ -9,3 +9,5 @@ dependencies:
       - torchvision
       - numpy
       - transformers
+      - pytorch-lightning
+      - wandb

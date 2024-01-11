@@ -15,19 +15,9 @@ import utils
 
 class SegSubDataset(Dataset):
     def __init__(self, args):
+        super(SegSubDataset, self).__init__()
         self.args = args
         self.items = self.get_items()
-
-        self.processor = Mask2FormerImageProcessor(
-            size={
-                'height': args['config']['data']['size']['height'],
-                'width': args['config']['data']['size']['width']
-            },
-            do_rescale=False,
-            image_mean=args['config']['data']['stats']['mean'],
-            image_std=args['config']['data']['stats']['std'],
-            ignore_index=255
-        )
 
     def __len__(self):
         return len(self.items)
@@ -40,7 +30,7 @@ class SegSubDataset(Dataset):
 
         label, instance_id_to_semantic_id = self.get_label(item)
 
-        inputs = self.processor(
+        inputs = self.args['processor'](
             images=image,
             segmentation_maps=label,
             instance_id_to_semantic_id=instance_id_to_semantic_id,
@@ -185,9 +175,20 @@ if __name__ == '__main__':
     config = utils.get_config()
     # compute_image_mean_std(config)
 
+    processor = Mask2FormerImageProcessor(
+        size={
+            'height': config['data']['size']['height'],
+            'width': config['data']['size']['width']
+        },
+        do_rescale=False,
+        image_mean=config['data']['stats']['mean'],
+        image_std=config['data']['stats']['std'],
+        ignore_index=255
+    )
+
     set = 'train'
     train_volumes = get_volumes(config, set=set)
-    args = {'config': config, 'set': set, 'volumes': train_volumes, 'dim': '0,1'}
+    args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': '0,1'}
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False, collate_fn=collate_fn)
 
