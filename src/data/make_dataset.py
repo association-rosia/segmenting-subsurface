@@ -19,6 +19,7 @@ class SegSubDataset(Dataset):
         self.items = self.get_items()
 
         self.processor = Mask2FormerImageProcessor(
+            do_resize=True,
             size={
                 'height': args['config']['data']['size']['height'],
                 'width': args['config']['data']['size']['width']
@@ -49,7 +50,7 @@ class SegSubDataset(Dataset):
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
-        return inputs
+        return inputs, item
 
     def get_slice(self, item):
         volume = np.load(item['volume'], allow_pickle=True)
