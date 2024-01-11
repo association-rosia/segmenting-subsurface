@@ -1,5 +1,17 @@
+path:
+  data:
+    root: 'data'
+    raw:
+      root: 'data/raw'
+      train: 'data/raw/train'
+      test: 'data/raw/test'
+
 data:
-  raw:
-    root: 'data/raw'
-    train: 'data/raw/train'
-    test: 'data/raw/test'
+  size:
+    height: 384
+    width: 384
+  stats:
+    min: -1215.0
+    max: 1930.0
+    mean: 0.3865
+    std: 0.03485

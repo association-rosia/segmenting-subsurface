@@ -4,3 +4,8 @@ dependencies:
   - pip
   - pip:
       - pyyaml
+      - tqdm
+      - torch
+      - torchvision
+      - numpy
+      - transformers
