@@ -10,18 +10,11 @@ from src.data.make_dataset import SegSubDataset
 
 
 class SegSubLightning(pl.LightningModule):
-    """
-    Lightning Module for the Segmenting-Subsurface project.
-    """
-
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
         self.args = args
 
         self.save_hyperparameters(logger=False)
-
-        # m2f_config = Mask2FormerConfig()
-        self.model = Mask2FormerForUniversalSegmentation()
 
         # init metrics for evaluation
         self.metrics = Dice(num_classes=1, threshold=0.8, average='macro')
@@ -69,7 +62,8 @@ class SegSubLightning(pl.LightningModule):
         return optimizer
 
     def train_dataloader(self):
-        dataset_train = SegSubDataset()
+        args = {'config': config, 'processor': processor, 'set': 'train', 'volumes': train_volumes, 'dim': '0,1'}
+        dataset_train = SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_train,
@@ -81,7 +75,8 @@ class SegSubLightning(pl.LightningModule):
         )
 
     def val_dataloader(self):
-        dataset_val = SegSubDataset()
+        args = {'config': config, 'processor': processor, 'set': 'val', 'volumes': val_volumes, 'dim': '0,1'}
+        dataset_val = SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_val,
@@ -93,8 +88,8 @@ class SegSubLightning(pl.LightningModule):
         )
 
     def test_dataloader(self):
-        # Initialize test dataset and data loader
-        dataset_test = SegSubDataset()
+        args = {'config': config, 'processor': processor, 'set': 'test', 'volumes': test_volumes, 'dim': '0,1'}
+        dataset_test = SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_test,
@@ -108,3 +103,15 @@ class SegSubLightning(pl.LightningModule):
 
 if __name__ == '__main__':
     config = utils.get_config()
+    model = Mask2FormerForUniversalSegmentation()
+
+    args = {
+        'config': config,
+        'model': model,
+        'processor': processor,
+        'train_volumes': train_volumes,
+        'val_volumes': val_volumes,
+        'dim': '0,1'
+    }
+
+    lightning = SegSubLightning(args)

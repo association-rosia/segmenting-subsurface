@@ -104,10 +104,12 @@ def collate_fn(batch):
     mask_labels = [el[1]['mask_labels'] for el in batch]
     items = [el[0] for el in batch]
 
-    inputs = {'pixel_values': pixel_values,
-              'pixel_mask': pixel_mask,
-              'class_labels': class_labels,
-              'mask_labels': mask_labels}
+    inputs = {
+        'pixel_values': pixel_values,
+        'pixel_mask': pixel_mask,
+        'class_labels': class_labels,
+        'mask_labels': mask_labels
+    }
 
     return items, inputs
 
