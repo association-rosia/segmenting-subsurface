@@ -8,7 +8,6 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import Mask2FormerImageProcessor
 
 import utils
 
@@ -71,7 +70,7 @@ class SegSubDataset(Dataset):
         slice = self.get_slice(item)
         label = slice - torch.min(slice)
         label = label.to(torch.uint8)
-        instance_id_to_semantic_id = {int(i): 1 for i in torch.unique(label).tolist()}
+        instance_id_to_semantic_id = {int(i): 0 for i in torch.unique(label).tolist()}
 
         return label, instance_id_to_semantic_id
 
@@ -173,6 +172,7 @@ def compute_image_mean_std(config):
 
 if __name__ == '__main__':
     from torch.utils.data import DataLoader
+    from transformers import Mask2FormerImageProcessor
 
     config = utils.get_config()
     # compute_image_mean_std(config)

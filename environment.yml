@@ -11,3 +11,4 @@ dependencies:
       - transformers
       - pytorch-lightning
       - wandb
+      - scikit-learn

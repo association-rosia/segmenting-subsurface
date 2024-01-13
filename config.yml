@@ -1,3 +1,5 @@
+random_state: 42
+
 path:
   data:
     root: 'data'
@@ -6,16 +8,21 @@ path:
       train: 'data/raw/train'
       test: 'data/raw/test'
 
-dataloader:
-  batch_size: 64
-  num_workers: 12
-
 data:
   size:
     height: 384
     width: 384
+
   stats:
     min: -1215.0
     max: 1930.0
     mean: 0.3865
     std: 0.03485
+
+training:
+  val_size: 0.2
+  lr: 0.001
+
+  dataloader:
+    batch_size: 64
+    num_workers: 12
