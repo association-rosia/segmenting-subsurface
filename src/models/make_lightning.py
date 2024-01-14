@@ -12,7 +12,7 @@ class SegSubLightning(pl.LightningModule):
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
         self.args = args
-        self.metrics = Dice(num_classes=1, threshold=0.8, average='macro')
+        self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
         self.save_hyperparameters(logger=False)
 
@@ -40,15 +40,13 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(batch)
         loss = outputs['loss']
         self.log('val/loss', loss, on_step=True, on_epoch=True)
+        # self.val_dice.update(logits, y) # TODO: compute Dice here
 
         return loss
 
     def on_validation_epoch_end(self) -> None:
-        metrics = self.metrics.compute()
-        self.log_dict(metrics, on_epoch=True)
-        self.metrics.reset()
-
-        return metrics
+        self.log('val/dice', self.val_dice.compute(), on_epoch=True)
+        self.val_dice.reset()
 
     # def test_step(self, batch, batch_idx):
     #     pass

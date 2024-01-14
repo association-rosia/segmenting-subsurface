@@ -16,6 +16,8 @@ class SegSubDataset(Dataset):
     def __init__(self, args):
         super(SegSubDataset, self).__init__()
         self.args = args
+        self.volume_min = -1215
+        self.volume_max = 1930
         self.items = self.get_items()
 
     def __len__(self):
@@ -59,9 +61,7 @@ class SegSubDataset(Dataset):
         return image
 
     def scale(self, image):
-        min = self.args['config']['data']['stats']['min']
-        max = self.args['config']['data']['stats']['max']
-        image = (image - min) / (max - min)
+        image = (image - self.volume_min) / (self.volume_max - self.volume_min)
 
         return image
 
@@ -177,16 +177,8 @@ if __name__ == '__main__':
     config = utils.get_config()
     # compute_image_mean_std(config)
 
-    processor = Mask2FormerImageProcessor(
-        size={
-            'height': config['data']['size']['height'],
-            'width': config['data']['size']['width']
-        },
-        do_rescale=False,
-        image_mean=config['data']['stats']['mean'],
-        image_std=config['data']['stats']['std'],
-        ignore_index=255
-    )
+    model_id = 'facebook/mask2former-swin-large-coco-instance'
+    processor = Mask2FormerImageProcessor.from_pretrained(model_id, num_labels=1)
 
     set = 'train'
     train_volumes = get_volumes(config, set=set)
