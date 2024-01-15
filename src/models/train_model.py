@@ -46,6 +46,7 @@ def main():
         num_labels=1
     )
 
+    # TODO: set num_channels to 1
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
         num_labels=1,
