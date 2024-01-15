@@ -1,8 +1,8 @@
 random_state: 42
 max_epochs: 10
-model_id: 'facebook/mask2former-swin-large-coco-instance'
+model_id: 'facebook/mask2former-swin-base-coco-instance'
 val_size: 0.2
 dim: '0,1'
 batch_size: 1
-num_workers: 4
+num_workers: 23
 lr: 0.001
