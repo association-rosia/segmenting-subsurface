@@ -19,6 +19,8 @@ class SegSubLightning(pl.LightningModule):
         self.args = args
         self.model = self.args['model']
         self.processor = self.args['processor']
+        self.batch_size = self.args['wandb'].batch_size
+        self.num_workers = self.args['wandb'].num_workers
         # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
@@ -30,7 +32,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log('train/loss', loss, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
 
         return loss
 
@@ -42,7 +44,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         # outputs = self.processor.post_process_instance_segmentation(outputs)
-        self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log('val/loss', loss, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
         # self.val_dice.update(logits, y)
 
         return loss
@@ -72,8 +74,8 @@ class SegSubLightning(pl.LightningModule):
 
         return DataLoader(
             dataset=dataset_train,
-            batch_size=self.args['wandb'].batch_size,
-            num_workers=self.args['wandb'].num_workers,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
             shuffle=True,
             drop_last=True,
             collate_fn=md.collate_fn
@@ -92,8 +94,8 @@ class SegSubLightning(pl.LightningModule):
 
         return DataLoader(
             dataset=dataset_val,
-            batch_size=self.args['wandb'].batch_size,
-            num_workers=self.args['wandb'].num_workers,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
             shuffle=False,
             drop_last=True,
             collate_fn=md.collate_fn
