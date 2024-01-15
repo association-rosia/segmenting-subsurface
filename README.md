@@ -13,6 +13,8 @@ and [NVIDIA](https://www.nvidia.com/).
 
 ## #️⃣ Command lines
 
+To install the lastest version of transformers: pip install git+https://github.com/huggingface/transformers
+
 ## 🔬 References
 
 ## 📝 Citing

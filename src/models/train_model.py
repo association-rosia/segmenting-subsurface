@@ -37,7 +37,7 @@ def main():
         accelerator='gpu',
         devices=1,
         # strategy='ddp',
-        # precision='16-mixed'
+        precision=16
     )
 
     processor = Mask2FormerImageProcessor.from_pretrained(
