@@ -16,6 +16,7 @@ class SegSubDataset(Dataset):
     def __init__(self, args):
         super(SegSubDataset, self).__init__()
         self.args = args
+        self.processor = self.args['processor']
         self.volume_min = -1215
         self.volume_max = 1930
         self.items = self.get_items()
@@ -31,7 +32,7 @@ class SegSubDataset(Dataset):
 
         label, instance_id_to_semantic_id = self.get_label(item)
 
-        inputs = self.args['processor'](
+        inputs = self.processor(
             images=image,
             segmentation_maps=label,
             instance_id_to_semantic_id=instance_id_to_semantic_id,
@@ -62,6 +63,7 @@ class SegSubDataset(Dataset):
 
     def scale(self, image):
         image = (image - self.volume_min) / (self.volume_max - self.volume_min)
+        print(image.min(), image.max())
 
         return image
 
@@ -114,7 +116,15 @@ def collate_fn(batch):
 
 
 def get_volumes(config, set):
-    path = config['path']['data']['raw']['test'] if set == 'test' else config['path']['data']['raw']['train']
+    root_test = config['path']['data']['raw']['test']
+    root_train = config['path']['data']['raw']['train']
+    notebooks_test = os.path.join(os.pardir, root_test)  # get path from notebooks
+    notebooks_train = os.path.join(os.pardir, root_train)  # get path from notebooks
+
+    root = root_test if set == 'test' else root_train
+    notebooks = notebooks_test if set == 'test' else notebooks_train
+    path = root if os.path.exists(root) else notebooks
+
     search_volumes = os.path.join(path, '**', '*.npy')
     volumes = glob(search_volumes, recursive=True)
     volumes = [volume for volume in volumes if 'seismic_block' in volume or set == 'test']
@@ -130,44 +140,38 @@ def compute_image_mean_std(config):
 
     volumes = get_volumes(config, set='train')
 
-    mins = []
-    print('\nCompute min:')
+    mins, maxs = [], []
+    print('\nCompute min and max :')
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
         mins.append(np.min(vol))
-
-    min = np.min(mins)
-
-    maxs = []
-    print('\nCompute max:')
-    for volume in tqdm(volumes):
-        vol = np.load(volume, allow_pickle=True)
         maxs.append(np.max(vol))
 
+    min = np.min(mins)
     max = np.max(maxs)
 
-    means = []
-    print('\nCompute mean:')
-    for volume in tqdm(volumes):
-        vol = np.load(volume, allow_pickle=True)
-        vol = min_max_scaling(vol, min, max)
-        means.append(np.mean(vol))
-
-    mean = np.mean(means)
-
-    vars = []
-    print('\nCompute std:')
-    for volume in tqdm(volumes):
-        vol = np.load(volume, allow_pickle=True)
-        vol = min_max_scaling(vol, min, max)
-        vars.append(np.mean((vol - mean) ** 2))
-
-    std = np.sqrt(np.mean(vars))
+    # means = []
+    # print('\nCompute mean:')
+    # for volume in tqdm(volumes):
+    #     vol = np.load(volume, allow_pickle=True)
+    #     vol = min_max_scaling(vol, min, max)
+    #     means.append(np.mean(vol))
+    #
+    # mean = np.mean(means)
+    #
+    # vars = []
+    # print('\nCompute std:')
+    # for volume in tqdm(volumes):
+    #     vol = np.load(volume, allow_pickle=True)
+    #     vol = min_max_scaling(vol, min, max)
+    #     vars.append(np.mean((vol - mean) ** 2))
+    #
+    # std = np.sqrt(np.mean(vars))
 
     print('\nmin', min)
     print('max', max)
-    print('mean', mean)
-    print('std', std)
+    # print('mean', mean)
+    # print('std', std)
 
 
 if __name__ == '__main__':
@@ -175,19 +179,15 @@ if __name__ == '__main__':
     from transformers import Mask2FormerImageProcessor
 
     config = utils.get_config()
+    wandb = utils.init_wandb()
     # compute_image_mean_std(config)
-
-    model_id = 'facebook/mask2former-swin-large-coco-instance'
-    processor = Mask2FormerImageProcessor.from_pretrained(model_id, num_labels=1)
+    processor = Mask2FormerImageProcessor.from_pretrained(wandb.config.model_id, do_rescale=False, num_labels=1)
 
     set = 'train'
     train_volumes = get_volumes(config, set=set)
-    args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': '0,1'}
+    args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': wandb.config.dim}
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False, collate_fn=collate_fn)
 
-    for item, inputs in train_dataloader:
-        print(item)
-        print('\npixel_values', inputs['pixel_values'][0].shape)
-        print('pixel_mask', inputs['pixel_mask'][0].shape)
-        break
+    for item, inputs in tqdm(train_dataloader):
+        pass

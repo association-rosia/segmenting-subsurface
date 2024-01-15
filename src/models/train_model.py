@@ -4,9 +4,9 @@ import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
 
+import make_lightning as ml
 import src.data.make_dataset as md
 import utils
-from make_lightning import SegSubLightning
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
     )
 
     trainer = pl.Trainer(
-        max_epochs=1,
+        max_epochs=wandb.config.max_epochs,
         logger=pl.loggers.WandbLogger(),
         callbacks=[checkpoint_callback],
         accelerator=utils.get_device(),
@@ -36,6 +36,7 @@ def main():
 
     processor = Mask2FormerImageProcessor.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
+        do_rescale=False,
         num_labels=1
     )
 
@@ -49,20 +50,20 @@ def main():
     train_volumes = md.get_volumes(config, set='train')
     train_volumes, val_volumes = train_test_split(
         train_volumes,
-        test_size=config['training']['val_size'],
-        random_state=config['random_state']
+        test_size=wandb.config.val_size,
+        random_state=wandb.config.random_state
     )
 
     args = {
         'config': config,
+        'wandb': wandb.config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,
-        'val_volumes': val_volumes,
-        'dim': wandb.config.dim
+        'val_volumes': val_volumes
     }
 
-    lightning = SegSubLightning(args)
+    lightning = ml.SegSubLightning(args)
 
     trainer.fit(model=lightning)
 

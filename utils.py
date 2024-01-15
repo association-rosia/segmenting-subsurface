@@ -1,22 +1,26 @@
 import os
 
 import torch
-import wandb
 import yaml
+
+import wandb
 
 
 def get_device():
     device = 'cpu'
     if torch.cuda.is_available():
         device = 'gpu'
-    elif torch.mps.is_available():
+    elif torch.backends.mps.is_available():
         device = 'mps'
 
     return device
 
 
 def get_config():
-    path = os.path.join('config', 'config.yml')
+    root = os.path.join('config', 'config.yml')
+    notebooks = os.path.join(os.pardir, root)
+    path = root if os.path.exists(root) else notebooks
+
     with open(path, 'r') as f:
         config = yaml.safe_load(f)
 
@@ -24,7 +28,10 @@ def get_config():
 
 
 def init_wandb():
-    path = os.path.join('config', 'wandb.yml')
+    root = os.path.join('config', 'wandb.yml')
+    notebooks = os.path.join(os.pardir, root)
+    path = root if os.path.exists(root) else notebooks
+
     with open(path, 'r') as f:
         config = yaml.safe_load(f)
 

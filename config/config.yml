@@ -8,7 +8,6 @@ path:
   models:
     root: 'models'
 
-
 data:
   stats:
     mean: 0.3865
