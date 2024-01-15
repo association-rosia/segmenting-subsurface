@@ -3,6 +3,7 @@ import sys
 
 sys.path.append(os.curdir)
 
+import torch
 import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
@@ -10,6 +11,8 @@ from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegme
 import make_lightning as ml
 import src.data.make_dataset as md
 import utils
+
+torch.set_float32_matmul_precision('medium')
 
 
 def main():
