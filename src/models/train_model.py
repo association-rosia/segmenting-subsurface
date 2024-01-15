@@ -13,6 +13,7 @@ import src.data.make_dataset as md
 import utils
 
 torch.set_float32_matmul_precision('medium')
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def main():
