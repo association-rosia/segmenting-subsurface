@@ -175,19 +175,16 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
-    from torch.utils.data import DataLoader
-    from transformers import Mask2FormerImageProcessor
-
     config = utils.get_config()
-    wandb = utils.init_wandb()
-    # compute_image_mean_std(config)
-    processor = Mask2FormerImageProcessor.from_pretrained(wandb.config.model_id, do_rescale=False, num_labels=1)
-
-    set = 'train'
-    train_volumes = get_volumes(config, set=set)
-    args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': wandb.config.dim}
-    train_dataset = SegSubDataset(args)
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False, collate_fn=collate_fn)
-
-    for item, inputs in tqdm(train_dataloader):
-        pass
+    # wandb = utils.init_wandb()
+    compute_image_mean_std(config)
+    # processor = Mask2FormerImageProcessor.from_pretrained(wandb.config.model_id, do_rescale=False, num_labels=1)
+    #
+    # set = 'train'
+    # train_volumes = get_volumes(config, set=set)
+    # args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': wandb.config.dim}
+    # train_dataset = SegSubDataset(args)
+    # train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False, collate_fn=collate_fn)
+    #
+    # for item, inputs in tqdm(train_dataloader):
+    #     pass
