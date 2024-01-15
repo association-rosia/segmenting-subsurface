@@ -31,7 +31,7 @@ def main():
         max_epochs=wandb.config.max_epochs,
         logger=pl.loggers.WandbLogger(),
         callbacks=[checkpoint_callback],
-        accelerator=utils.get_device(),
+        # accelerator='gpu',
         # devices=4,
         # strategy='ddp',
         precision='16-mixed'

@@ -19,7 +19,7 @@ class SegSubLightning(pl.LightningModule):
         self.args = args
         self.model = self.args['model']
         self.processor = self.args['processor']
-        self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
+        # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
         outputs = self.model(**inputs)
