@@ -78,7 +78,8 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.num_workers,
             shuffle=True,
             drop_last=True,
-            collate_fn=md.collate_fn
+            collate_fn=md.collate_fn,
+            pin_memory=True
         )
 
     def val_dataloader(self):
@@ -98,7 +99,8 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.num_workers,
             shuffle=False,
             drop_last=True,
-            collate_fn=md.collate_fn
+            collate_fn=md.collate_fn,
+            pin_memory=True
         )
 
     # def test_dataloader(self):
