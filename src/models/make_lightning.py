@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.append(os.curdir)
+
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader

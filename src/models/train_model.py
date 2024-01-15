@@ -1,4 +1,7 @@
 import os
+import sys
+
+sys.path.append(os.curdir)
 
 import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
