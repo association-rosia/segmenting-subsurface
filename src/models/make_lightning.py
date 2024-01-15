@@ -30,7 +30,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, on_epoch=True)
+        self.log('train/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
 
         return loss
 
@@ -42,13 +42,13 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         # outputs = self.processor.post_process_instance_segmentation(outputs)
-        self.log('val/loss', loss, on_step=True, on_epoch=True)
+        self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
         # self.val_dice.update(logits, y)
 
         return loss
 
     # def on_validation_epoch_end(self):
-    #     self.log('val/dice', self.val_dice.compute(), on_epoch=True)
+    #     self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
     #     self.val_dice.reset()
 
     # def test_step(self, batch, batch_idx):
