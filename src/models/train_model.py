@@ -35,7 +35,7 @@ def main():
         logger=pl.loggers.WandbLogger(),
         callbacks=[checkpoint_callback],
         accelerator='gpu',
-        devices=0,
+        devices=1,
         # strategy='ddp',
         # precision='16-mixed'
     )
