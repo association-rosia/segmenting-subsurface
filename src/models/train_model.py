@@ -34,10 +34,10 @@ def main():
         max_epochs=wandb.config.max_epochs,
         logger=pl.loggers.WandbLogger(),
         callbacks=[checkpoint_callback],
-        # accelerator='gpu',
-        # devices=4,
+        accelerator='gpu',
+        devices=1,
         # strategy='ddp',
-        precision='16-mixed'
+        # precision='16-mixed'
     )
 
     processor = Mask2FormerImageProcessor.from_pretrained(
