@@ -16,8 +16,8 @@ def main():
     os.makedirs(config['path']['models']['root'], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         save_top_k=1,
-        monitor='val/dice',
-        mode='max',
+        monitor='val/loss',
+        mode='min',
         dirpath=config['path']['models']['root'],
         filename=f'{wandb.run.name}-{wandb.run.id}',
         auto_insert_metric_name=False,

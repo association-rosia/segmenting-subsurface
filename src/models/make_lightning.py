@@ -17,12 +17,7 @@ class SegSubLightning(pl.LightningModule):
         self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
-        outputs = self.model(
-            **inputs,
-            output_attentions=False,
-            output_hidden_states=False,
-            return_dict=True,
-        )
+        outputs = self.model(**inputs)
 
         return outputs
 
@@ -30,7 +25,6 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        print(loss)
         self.log('train/loss', loss, on_step=True, on_epoch=True)
 
         return loss
@@ -42,32 +36,15 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-
-        print(loss)
-
-        for key in inputs.keys():
-            try:
-                print(key, inputs[key].shape)
-            except:
-                pass
-
-        outputs = self.processor.post_process_instance_segmentation(outputs, return_binary_maps=True)
-
-        for output in outputs:
-            for key in output.keys():
-                try:
-                    print(key, output[key].shape)
-                except:
-                    pass
-
+        # outputs = self.processor.post_process_instance_segmentation(outputs)
         self.log('val/loss', loss, on_step=True, on_epoch=True)
-        # self.val_dice.update(logits, y) # TODO: compute Dice here
+        # self.val_dice.update(logits, y)
 
         return loss
 
-    def on_validation_epoch_end(self):
-        self.log('val/dice', self.val_dice.compute(), on_epoch=True)
-        self.val_dice.reset()
+    # def on_validation_epoch_end(self):
+    #     self.log('val/dice', self.val_dice.compute(), on_epoch=True)
+    #     self.val_dice.reset()
 
     # def test_step(self, batch, batch_idx):
     #     pass

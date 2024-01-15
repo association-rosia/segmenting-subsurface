@@ -17,8 +17,8 @@ class SegSubDataset(Dataset):
         super(SegSubDataset, self).__init__()
         self.args = args
         self.processor = self.args['processor']
-        self.volume_min = -1215
-        self.volume_max = 1930
+        self.volume_min = -1215.0
+        self.volume_max = 1930.0
         self.items = self.get_items()
 
     def __len__(self):
@@ -63,7 +63,6 @@ class SegSubDataset(Dataset):
 
     def scale(self, image):
         image = (image - self.volume_min) / (self.volume_max - self.volume_min)
-        print(image.min(), image.max())
 
         return image
 
@@ -150,28 +149,28 @@ def compute_image_mean_std(config):
     min = np.min(mins)
     max = np.max(maxs)
 
-    # means = []
-    # print('\nCompute mean:')
-    # for volume in tqdm(volumes):
-    #     vol = np.load(volume, allow_pickle=True)
-    #     vol = min_max_scaling(vol, min, max)
-    #     means.append(np.mean(vol))
-    #
-    # mean = np.mean(means)
-    #
-    # vars = []
-    # print('\nCompute std:')
-    # for volume in tqdm(volumes):
-    #     vol = np.load(volume, allow_pickle=True)
-    #     vol = min_max_scaling(vol, min, max)
-    #     vars.append(np.mean((vol - mean) ** 2))
-    #
-    # std = np.sqrt(np.mean(vars))
+    means = []
+    print('\nCompute mean:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        vol = min_max_scaling(vol, min, max)
+        means.append(np.mean(vol))
+
+    mean = np.mean(means)
+
+    vars = []
+    print('\nCompute std:')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        vol = min_max_scaling(vol, min, max)
+        vars.append(np.mean((vol - mean) ** 2))
+
+    std = np.sqrt(np.mean(vars))
 
     print('\nmin', min)
     print('max', max)
-    # print('mean', mean)
-    # print('std', std)
+    print('mean', mean)
+    print('std', std)
 
 
 if __name__ == '__main__':
