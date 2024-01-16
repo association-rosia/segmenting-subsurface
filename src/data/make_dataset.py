@@ -8,6 +8,9 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
+import random
+
+from sklearn.model_selection import train_test_split
 
 import utils
 
@@ -15,21 +18,20 @@ import utils
 class SegSubDataset(Dataset):
     def __init__(self, args):
         super(SegSubDataset, self).__init__()
-        self.args = args
-        self.processor = self.args['processor']
+        self.config = args['config']
+        self.wandb = args['wandb']
+        self.processor = args['processor']
+        self.slices = args['slices']
+
         self.volume_min = -1215.0
         self.volume_max = 1930.0
-        self.items = self.get_items()
 
     def __len__(self):
-        return len(self.items)
+        return len(self.slices)
 
     def __getitem__(self, idx):
-        item = self.items[idx]
-
+        item = self.slices[idx]
         image = self.get_image(item)
-        image = self.scale(image)
-
         label, instance_id_to_semantic_id = self.get_label(item)
 
         inputs = self.processor(
@@ -55,14 +57,15 @@ class SegSubDataset(Dataset):
 
         return torch.from_numpy(slice)
 
-    def get_image(self, item):
-        slice = self.get_slice(item)
-        image = torch.stack([slice, slice, slice], dim=0)
+    def scale(self, image):
+        image = (image - self.volume_min) / (self.volume_max - self.volume_min)
 
         return image
 
-    def scale(self, image):
-        image = (image - self.volume_min) / (self.volume_max - self.volume_min)
+    def get_image(self, item):
+        image = self.get_slice(item)
+        image = self.scale(image)
+        image = torch.unsqueeze(image, dim=0)
 
         return image
 
@@ -75,34 +78,13 @@ class SegSubDataset(Dataset):
 
         return label, instance_id_to_semantic_id
 
-    def get_items(self):
-        slices = []
-        volumes = self.args['volumes']
-
-        for volume in volumes:
-            slices += self.get_items_from_volume(volume)
-
-        return slices
-
-    def get_items_from_volume(self, volume):
-        items = []
-
-        for dim in self.args['dim'].split(','):
-            if dim == '0' or dim == '1':
-                # volume shape: (300, 300, 100)
-                items += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(300)]
-            else:
-                raise ValueError(f'Unknown dimension: {dim}')
-
-        return items
-
 
 def collate_fn(batch):
     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
     pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
     class_labels = [el[1]['class_labels'] for el in batch]
     mask_labels = [el[1]['mask_labels'] for el in batch]
-    items = [el[0] for el in batch]
+    slices = [el[0] for el in batch]
 
     inputs = {
         'pixel_values': pixel_values,
@@ -111,7 +93,7 @@ def collate_fn(batch):
         'mask_labels': mask_labels
     }
 
-    return items, inputs
+    return slices, inputs
 
 
 def get_volumes(config, set):
@@ -129,6 +111,49 @@ def get_volumes(config, set):
     volumes = [volume for volume in volumes if 'seismic_block' in volume or set == 'test']
 
     return volumes
+
+
+def get_slices(wandb, volumes):
+    slices = []
+
+    for volume in volumes:
+        slices += get_slices_from_volume(wandb, volume)
+
+    if wandb.config.dataset_size:
+        random.seed(wandb.config.random_state)
+        # TODO: get most similar volumes
+        slices = random.sample(slices, k=wandb.config.dataset_size)
+
+    return slices
+
+
+def get_slices_from_volume(wandb, volume):
+    slices = []
+
+    for dim in wandb.config.dim.split(','):
+        if dim == '0' or dim == '1':
+            slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(300)]
+        else:
+            raise ValueError(f'Unknown dimension: {dim}')
+
+    return slices
+
+
+def get_training_slices(config, wandb):
+    training_volumes = get_volumes(config, set='training')
+    training_slices = get_slices(wandb, training_volumes)
+
+    train_slices, val_slices = train_test_split(
+        training_slices,
+        test_size=wandb.config.val_size,
+        random_state=wandb.config.random_state
+    )
+
+    return train_slices, val_slices
+
+
+def get_submission_slices():
+    return  # TODO
 
 
 def compute_image_mean_std(config):
@@ -174,16 +199,24 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
+    import src.models.make_lightning as ml
+    from torch.utils.data import DataLoader
+
     config = utils.get_config()
-    # wandb = utils.init_wandb()
-    compute_image_mean_std(config)
-    # processor = Mask2FormerImageProcessor.from_pretrained(wandb.config.model_id, do_rescale=False, num_labels=1)
-    #
-    # set = 'train'
-    # train_volumes = get_volumes(config, set=set)
-    # args = {'config': config, 'processor': processor, 'set': set, 'volumes': train_volumes, 'dim': wandb.config.dim}
-    # train_dataset = SegSubDataset(args)
-    # train_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=False, collate_fn=collate_fn)
-    #
-    # for item, inputs in tqdm(train_dataloader):
-    #     pass
+    wandb = utils.init_wandb()
+    # compute_image_mean_std(config)
+    processor, model = ml.get_processor_model(config, wandb)
+    train_slices, val_slices = get_training_slices(config, wandb)
+
+    args = {
+        'config': config,
+        'wandb': wandb,
+        'processor': processor,
+        'slices': train_slices[:10]
+    }
+
+    train_dataset = SegSubDataset(args)
+    train_dataloader = DataLoader(dataset=train_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+    for item, inputs in train_dataloader:
+        break

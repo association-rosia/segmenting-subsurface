@@ -6,6 +6,7 @@ sys.path.append(os.curdir)
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
+from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
 from torchmetrics.classification import Dice
 
 import src.data.make_dataset as md
@@ -15,11 +16,12 @@ import utils
 class SegSubLightning(pl.LightningModule):
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
-        # self.save_hyperparameters(logger=False)
-        self.args = args
+        self.config = args['config']
         self.wandb = args['wandb']
-        self.model = self.args['model']
-        self.processor = self.args['processor']
+        self.model = args['model']
+        self.processor = args['processor']
+        self.train_slices = args['train_slices']
+        self.val_slices = args['val_slices']
         # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
@@ -31,7 +33,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, batch_size=self.wandb.batch_size, sync_dist=True)
+        self.log('train/loss', loss, on_step=True, batch_size=self.wandb.config.batch_size, sync_dist=True)
 
         return loss
 
@@ -43,7 +45,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         # outputs = self.processor.post_process_instance_segmentation(outputs)
-        self.log('val/loss', loss, on_step=True, batch_size=self.wandb.batch_size, sync_dist=True)
+        self.log('val/loss', loss, on_step=True, batch_size=self.wandb.config.batch_size, sync_dist=True)
         # self.val_dice.update(logits, y)
 
         return loss
@@ -56,25 +58,28 @@ class SegSubLightning(pl.LightningModule):
     #     pass
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.model.parameters(), lr=self.wandb.lr, weight_decay=self.wandb.weight_decay)
+        optimizer = AdamW(
+            params=self.model.parameters(),
+            lr=self.config.wandb.lr,
+            weight_decay=self.wandb.config.weight_decay
+        )
 
         return optimizer
 
     def train_dataloader(self):
         args = {
-            'config': self.args['config'],
-            'processor': self.args['processor'],
-            'set': 'train',
-            'volumes': self.args['train_volumes'],
-            'dim': self.wandb.dim
+            'config': self.config,
+            'wandb': self.wandb,
+            'processor': self.processor,
+            'slices': self.train_slices,
         }
 
         dataset_train = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_train,
-            batch_size=self.wandb.batch_size,
-            num_workers=self.wandb.num_workers,
+            batch_size=self.wandb.config.batch_size,
+            num_workers=self.wandb.config.num_workers,
             shuffle=True,
             drop_last=True,
             collate_fn=md.collate_fn,
@@ -83,74 +88,57 @@ class SegSubLightning(pl.LightningModule):
 
     def val_dataloader(self):
         args = {
-            'config': self.args['config'],
-            'processor': self.args['processor'],
-            'set': 'val',
-            'volumes': self.args['train_volumes'],
-            'dim': self.wandb.dim
+            'config': self.config,
+            'wandb': self.wandb,
+            'processor': self.processor,
+            'slices': self.val_slices,
         }
 
         dataset_val = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_val,
-            batch_size=self.wandb.batch_size,
-            num_workers=self.wandb.num_workers,
+            batch_size=self.wandb.config.batch_size,
+            num_workers=self.wandb.config.num_workers,
             shuffle=False,
             drop_last=True,
             collate_fn=md.collate_fn,
             pin_memory=True
         )
 
-    # def test_dataloader(self):
-    #     args = {'config': config, 'processor': processor, 'set': 'test', 'volumes': test_volumes, 'dim': '0,1'}
-    #     dataset_test = SegSubDataset(args)
-    #
-    #     return DataLoader(
-    #         dataset=dataset_test,
-    #         batch_size=config.dataloader.batch_size,
-    #         num_workers=config.dataloader.num_workers,
-    #         shuffle=False,
-    #         drop_last=False,
-    #         collate_fn=md.collate_fn
-    #     )
 
-
-if __name__ == '__main__':
-    from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
-    from sklearn.model_selection import train_test_split
-
-    config = utils.get_config()
-    wandb = utils.init_wandb()
-
+def get_processor_model(config, wandb):
     processor = Mask2FormerImageProcessor.from_pretrained(
-        wandb.config.model_id,
+        pretrained_model_name_or_path=wandb.config.model_id,
         do_rescale=False,
-        num_labels=1
+        image_mean=config['data']['mean'],
+        image_std=config['data']['std'],
+        num_labels=wandb.config.num_labels
     )
 
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
-        wandb.config.model_id,
-        num_labels=1,
+        pretrained_model_name_or_path=wandb.config.model_id,
+        num_labels=wandb.config.num_labels,
+        backbone_config={'num_channels': wandb.config.num_channels},
         ignore_mismatched_sizes=True
     )
 
-    test_volumes = md.get_volumes(config, set='test')
-    train_volumes = md.get_volumes(config, set='train')
+    return processor, model
 
-    train_volumes, val_volumes = train_test_split(
-        train_volumes,
-        test_size=wandb.config.val_size,
-        random_state=wandb.config.random_state
-    )
+
+if __name__ == '__main__':
+    config = utils.get_config()
+    wandb = utils.init_wandb()
+    processor, model = get_processor_model(config, wandb)
+    train_slices, val_slices = md.get_training_slices(config, wandb)
 
     args = {
         'config': config,
         'wandb': wandb,
         'model': model,
         'processor': processor,
-        'train_volumes': train_volumes,
-        'val_volumes': val_volumes
+        'train_slices': train_slices,
+        'val_slices': val_slices
     }
 
     lightning = SegSubLightning(args)

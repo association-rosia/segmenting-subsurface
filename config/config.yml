@@ -9,6 +9,5 @@ path:
     root: 'models'
 
 data:
-  stats:
-    mean: 0.3865
-    std: 0.03485
+  mean: 0.3865
+  std: 0.03485
