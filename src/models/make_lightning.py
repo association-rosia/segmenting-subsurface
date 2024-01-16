@@ -119,7 +119,7 @@ def get_processor_model(config, wandb):
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
         num_labels=wandb.config.num_labels,
-        backbone_config={'num_channels': wandb.config.num_channels},
+        # backbone_config={'num_channels': wandb.config.num_channels},
         ignore_mismatched_sizes=True
     )
 

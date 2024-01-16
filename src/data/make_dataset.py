@@ -41,7 +41,7 @@ class SegSubDataset(Dataset):
             return_tensors='pt'
         )
 
-        inputs = {k: v.squeeze(dim=0) if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
         return item, inputs
 
@@ -63,9 +63,10 @@ class SegSubDataset(Dataset):
         return image
 
     def get_image(self, item):
-        image = self.get_slice(item)
-        image = self.scale(image)
-        image = torch.unsqueeze(image, dim=0)
+        slice = self.get_slice(item)
+        slice = self.scale(slice)
+        image = torch.stack([slice, slice, slice])
+        # image = torch.unsqueeze(image, dim=0)
 
         return image
 
