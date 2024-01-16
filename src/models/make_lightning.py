@@ -17,10 +17,9 @@ class SegSubLightning(pl.LightningModule):
         super(SegSubLightning, self).__init__()
         # self.save_hyperparameters(logger=False)
         self.args = args
+        self.wandb = args['wandb']
         self.model = self.args['model']
         self.processor = self.args['processor']
-        self.batch_size = self.args['wandb'].batch_size
-        self.num_workers = self.args['wandb'].num_workers
         # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
@@ -32,7 +31,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
+        self.log('train/loss', loss, on_step=True, batch_size=self.wandb.batch_size, sync_dist=True)
 
         return loss
 
@@ -44,7 +43,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         # outputs = self.processor.post_process_instance_segmentation(outputs)
-        self.log('val/loss', loss, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
+        self.log('val/loss', loss, on_step=True, batch_size=self.wandb.batch_size, sync_dist=True)
         # self.val_dice.update(logits, y)
 
         return loss
@@ -57,7 +56,7 @@ class SegSubLightning(pl.LightningModule):
     #     pass
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.model.parameters(), lr=self.args['wandb'].lr)
+        optimizer = AdamW(self.model.parameters(), lr=self.wandb.lr, weight_decay=self.wandb.weight_decay)
 
         return optimizer
 
@@ -67,15 +66,15 @@ class SegSubLightning(pl.LightningModule):
             'processor': self.args['processor'],
             'set': 'train',
             'volumes': self.args['train_volumes'],
-            'dim': self.args['wandb'].dim
+            'dim': self.wandb.dim
         }
 
         dataset_train = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_train,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
+            batch_size=self.wandb.batch_size,
+            num_workers=self.wandb.num_workers,
             shuffle=True,
             drop_last=True,
             collate_fn=md.collate_fn,
@@ -88,15 +87,15 @@ class SegSubLightning(pl.LightningModule):
             'processor': self.args['processor'],
             'set': 'val',
             'volumes': self.args['train_volumes'],
-            'dim': self.args['wandb'].dim
+            'dim': self.wandb.dim
         }
 
         dataset_val = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_val,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
+            batch_size=self.wandb.batch_size,
+            num_workers=self.wandb.num_workers,
             shuffle=False,
             drop_last=True,
             collate_fn=md.collate_fn,
