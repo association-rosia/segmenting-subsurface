@@ -41,7 +41,7 @@ def get_trainer(config, wandb):
         accelerator='gpu',
         devices=1,
         # strategy='ddp',
-        # precision='16-mixed'
+        precision='16-mixed'
     )
 
     return trainer
