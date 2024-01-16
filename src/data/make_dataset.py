@@ -41,7 +41,7 @@ class SegSubDataset(Dataset):
             return_tensors='pt'
         )
 
-        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+        inputs = {k: v.squeeze(dim=0) if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
         return item, inputs
 
@@ -216,7 +216,12 @@ if __name__ == '__main__':
     }
 
     train_dataset = SegSubDataset(args)
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=wandb.config.batch_size,
+        shuffle=False,
+        collate_fn=collate_fn
+    )
 
     for item, inputs in train_dataloader:
         break
