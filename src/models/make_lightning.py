@@ -60,7 +60,7 @@ class SegSubLightning(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = AdamW(
             params=self.model.parameters(),
-            lr=self.config.wandb.lr,
+            lr=self.wandb.config.lr,
             weight_decay=self.wandb.config.weight_decay
         )
 
