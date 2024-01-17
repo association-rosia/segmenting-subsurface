@@ -121,7 +121,7 @@ def get_volumes(config, set):
     return volumes
 
 
-def get_slices(wandb, volumes):
+def get_slices(wandb, volumes, set_size):
     slices = []
 
     for volume in volumes:
@@ -129,7 +129,8 @@ def get_slices(wandb, volumes):
 
     if wandb.config.dataset_size:
         random.seed(wandb.config.random_state)
-        slices = random.sample(slices, k=wandb.config.dataset_size)
+        k = set_size * wandb.config.dataset_size
+        slices = random.sample(slices, k=k)
 
     return slices
 
@@ -148,13 +149,15 @@ def get_slices_from_volume(wandb, volume):
 
 def get_training_slices(config, wandb):
     training_volumes = get_volumes(config, set='training')
-    training_slices = get_slices(wandb, training_volumes)
 
-    train_slices, val_slices = train_test_split(
-        training_slices,
+    train_volumes, val_volumes = train_test_split(
+        training_volumes,
         test_size=wandb.config.val_size,
         random_state=wandb.config.random_state
     )
+
+    train_slices = get_slices(wandb, train_volumes, set_size=(1 - wandb.config.val_size))
+    val_slices = get_slices(wandb, val_volumes, set_size=wandb.config.val_size)
 
     return train_slices, val_slices
 

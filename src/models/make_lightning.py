@@ -47,9 +47,6 @@ class SegSubLightning(pl.LightningModule):
 
         return loss
 
-    # def log_slice_mask(self, image, mask_target, mask_pred):
-    #     pass
-
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
@@ -62,9 +59,6 @@ class SegSubLightning(pl.LightningModule):
     def on_validation_epoch_end(self):
         self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
         self.val_dice.reset()
-
-    # def test_step(self, batch, batch_idx):
-    #     pass
 
     def configure_optimizers(self):
         optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
@@ -87,7 +81,6 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb.config.num_workers,
             shuffle=True,
             drop_last=True,
-            # collate_fn=md.collate_fn,
             pin_memory=True
         )
 
@@ -107,7 +100,6 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb.config.num_workers,
             shuffle=False,
             drop_last=True,
-            # collate_fn=md.collate_fn,
             pin_memory=True
         )
 
@@ -118,15 +110,8 @@ def get_processor_model(config, wandb):
         do_rescale=False,
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
-        # num_labels=wandb.config.num_labels
         do_reduce_labels=False,
     )
-
-    # model = Mask2FormerForUniversalSegmentation.from_pretrained(
-    #     pretrained_model_name_or_path=wandb.config.model_id,
-    #     num_labels=wandb.config.num_labels,
-    #     ignore_mismatched_sizes=True
-    # )
 
     model = SegformerForSemanticSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
