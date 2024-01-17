@@ -1,7 +1,7 @@
 random_state: 42
 max_epochs: 3
 
-model_id: 'nvidia/segformer-b3-finetuned-ade-640-640'
+model_id: 'nvidia/segformer-b4-finetuned-ade-512-512'
 num_labels: 100 # verify in the starter notebook
 num_channels: 3
 
