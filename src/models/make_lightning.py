@@ -3,6 +3,7 @@ import sys
 
 sys.path.append(os.curdir)
 
+from torch import nn
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
@@ -22,6 +23,8 @@ class SegSubLightning(pl.LightningModule):
         self.processor = args['processor']
         self.train_slices = args['train_slices']
         self.val_slices = args['val_slices']
+
+        self.criterion = nn.CrossEntropyLoss()
         # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
 
     def forward(self, inputs):
@@ -31,7 +34,13 @@ class SegSubLightning(pl.LightningModule):
 
     def training_step(self, batch):
         item, inputs = batch
+
+        print(inputs)
+
         outputs = self.forward(inputs)
+
+        print(outputs)
+
         loss = outputs['loss']
         self.log('train/loss', loss, on_step=True, on_epoch=True)
 
