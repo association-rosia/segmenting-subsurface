@@ -25,7 +25,7 @@ class SegSubLightning(pl.LightningModule):
         self.val_slices = args['val_slices']
 
         self.criterion = nn.CrossEntropyLoss()
-        self.val_dice = tm.classification.Dice(num_classes=wandb.config.num_labels, average='macro')
+        self.val_dice = tm.classification.Dice(num_classes=self.wandb.config.num_labels, average='macro')
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
