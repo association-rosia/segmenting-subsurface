@@ -1,5 +1,5 @@
 random_state: 42
-max_epochs: 10
+max_epochs: 3
 
 #model_id: 'facebook/mask2former-swin-tiny-coco-instance'
 model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
