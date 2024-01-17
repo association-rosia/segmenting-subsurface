@@ -119,7 +119,7 @@ def get_processor_model(config, wandb):
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
         # num_labels=wandb.config.num_labels
-        reduce_labels=False,
+        do_reduce_labels=False,
     )
 
     # model = Mask2FormerForUniversalSegmentation.from_pretrained(
@@ -132,6 +132,7 @@ def get_processor_model(config, wandb):
         pretrained_model_name_or_path=wandb.config.model_id,
         num_labels=wandb.config.num_labels,
         num_channels=wandb.config.num_channels,
+        ignore_index=-1,
         ignore_mismatched_sizes=True
     )
 
