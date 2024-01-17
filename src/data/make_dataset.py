@@ -231,7 +231,7 @@ if __name__ == '__main__':
         'config': config,
         'wandb': wandb,
         'processor': processor,
-        'slices': train_slices[:100]
+        'slices': train_slices
     }
 
     train_dataset = SegSubDataset(args)
