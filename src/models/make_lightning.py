@@ -60,7 +60,7 @@ class SegSubLightning(pl.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
-        self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
+        self.log('val/dice', self.val_dice.compute(), on_epoch=True)
         self.val_dice.reset()
 
     # def test_step(self, batch, batch_idx):
