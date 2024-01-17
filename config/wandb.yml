@@ -9,7 +9,7 @@ dataset_size: null
 val_size: 0.1
 dim: '0,1'
 
-batch_size: 16
+batch_size: 8
 num_workers: 95
 
 lr: 0.001
