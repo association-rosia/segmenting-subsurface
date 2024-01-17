@@ -218,32 +218,32 @@ def get_num_labels(config):
 
 
 if __name__ == '__main__':
-    # import src.models.make_lightning as ml
-    # from torch.utils.data import DataLoader
+    import src.models.make_lightning as ml
+    from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    # wandb = utils.init_wandb()
+    wandb = utils.init_wandb()
 
-    get_num_labels(config)
-    # compute_image_mean_std(config)
+    processor, model = ml.get_processor_model(config, wandb)
+    train_slices, val_slices = get_training_slices(config, wandb)
 
-    # processor, model = ml.get_processor_model(config, wandb)
-    # train_slices, val_slices = get_training_slices(config, wandb)
-    #
-    # args = {
-    #     'config': config,
-    #     'wandb': wandb,
-    #     'processor': processor,
-    #     'slices': train_slices[:100]
-    # }
-    #
-    # train_dataset = SegSubDataset(args)
-    # train_dataloader = DataLoader(
-    #     dataset=train_dataset,
-    #     batch_size=wandb.config.batch_size,
-    #     shuffle=False,
-    #     # collate_fn=collate_fn
-    # )
-    #
-    # for item, inputs in train_dataloader:
-    #     break
+    args = {
+        'config': config,
+        'wandb': wandb,
+        'processor': processor,
+        'slices': train_slices[:100]
+    }
+
+    train_dataset = SegSubDataset(args)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=wandb.config.batch_size,
+        shuffle=False
+    )
+
+    min_value = 99
+    max_value = 0
+    for item, inputs in train_dataloader:
+        min_value = min(min_value, inputs['labels'].min().item())
+        max_value = max(max_value, inputs['labels'].max().item())
+        print(min_value, max_value)
