@@ -6,7 +6,7 @@ sys.path.append(os.curdir)
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation, SegformerForSemanticSegmentation
+from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 from torchmetrics.classification import Dice
 
 import src.data.make_dataset as md
@@ -61,7 +61,7 @@ class SegSubLightning(pl.LightningModule):
         optimizer = AdamW(
             params=self.model.parameters(),
             lr=self.wandb.config.lr,
-            # weight_decay=self.wandb.config.weight_decay
+            weight_decay=self.wandb.config.weight_decay
         )
 
         return optimizer
