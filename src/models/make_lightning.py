@@ -43,7 +43,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
-        self.log('train/loss', loss, on_step=True, on_epoch=True)
+        self.log('train/loss', loss, on_epoch=True)
 
         return loss
 
@@ -54,7 +54,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
-        self.log('val/loss', loss, on_step=True, on_epoch=True)
+        self.log('val/loss', loss, on_epoch=True)
         self.val_dice.update(outputs, inputs['labels'])
 
         return loss
