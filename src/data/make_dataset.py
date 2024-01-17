@@ -32,12 +32,13 @@ class SegSubDataset(Dataset):
     def __getitem__(self, idx):
         item = self.slices[idx]
         image = self.get_image(item)
-        label, instance_id_to_semantic_id = self.get_label(item)
+        # label, instance_id_to_semantic_id = self.get_label(item)
+        label = self.get_label(item)
 
         inputs = self.processor(
             images=image,
             segmentation_maps=label,
-            instance_id_to_semantic_id=instance_id_to_semantic_id,
+            # instance_id_to_semantic_id=instance_id_to_semantic_id,
             return_tensors='pt'
         )
 
@@ -65,36 +66,42 @@ class SegSubDataset(Dataset):
     def get_image(self, item):
         slice = self.get_slice(item)
         slice = self.scale(slice)
-        image = torch.stack([slice, slice, slice])
+        image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
         # image = torch.unsqueeze(image, dim=0)
 
         return image
 
     def get_label(self, item):
         item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
-        slice = self.get_slice(item)
-        label = slice - torch.min(slice)
-        label = label.to(torch.uint8)
-        instance_id_to_semantic_id = {int(i): 0 for i in torch.unique(label).tolist()}
+        label = self.get_slice(item)
 
-        return label, instance_id_to_semantic_id
+        return label
+
+    # def get_label(self, item):
+    #     item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
+    #     slice = self.get_slice(item)
+    #     label = slice - torch.min(slice)
+    #     label = label.to(torch.uint8)
+    #     instance_id_to_semantic_id = {int(i): 0 for i in torch.unique(label).tolist()}
+    #
+    #     return label, instance_id_to_semantic_id
 
 
-def collate_fn(batch):
-    pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
-    pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
-    class_labels = [el[1]['class_labels'] for el in batch]
-    mask_labels = [el[1]['mask_labels'] for el in batch]
-    slices = [el[0] for el in batch]
-
-    inputs = {
-        'pixel_values': pixel_values,
-        'pixel_mask': pixel_mask,
-        'class_labels': class_labels,
-        'mask_labels': mask_labels
-    }
-
-    return slices, inputs
+# def collate_fn(batch):
+#     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+#     pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
+#     class_labels = [el[1]['class_labels'] for el in batch]
+#     mask_labels = [el[1]['mask_labels'] for el in batch]
+#     slices = [el[0] for el in batch]
+#
+#     inputs = {
+#         'pixel_values': pixel_values,
+#         'pixel_mask': pixel_mask,
+#         'class_labels': class_labels,
+#         'mask_labels': mask_labels
+#     }
+#
+#     return slices, inputs
 
 
 def get_volumes(config, set):
@@ -215,28 +222,28 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    # wandb = utils.init_wandb()
+    wandb = utils.init_wandb()
 
-    get_num_labels(config)
+    # get_num_labels(config)
     # compute_image_mean_std(config)
 
-    # processor, model = ml.get_processor_model(config, wandb)
-    # train_slices, val_slices = get_training_slices(config, wandb)
-    #
-    # args = {
-    #     'config': config,
-    #     'wandb': wandb,
-    #     'processor': processor,
-    #     'slices': train_slices[:10]
-    # }
-    #
-    # train_dataset = SegSubDataset(args)
-    # train_dataloader = DataLoader(
-    #     dataset=train_dataset,
-    #     batch_size=wandb.config.batch_size,
-    #     shuffle=False,
-    #     collate_fn=collate_fn
-    # )
-    #
-    # for item, inputs in train_dataloader:
-    #     break
+    processor, model = ml.get_processor_model(config, wandb)
+    train_slices, val_slices = get_training_slices(config, wandb)
+
+    args = {
+        'config': config,
+        'wandb': wandb,
+        'processor': processor,
+        'slices': train_slices[:100]
+    }
+
+    train_dataset = SegSubDataset(args)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=wandb.config.batch_size,
+        shuffle=False,
+        # collate_fn=collate_fn
+    )
+
+    for item, inputs in train_dataloader:
+        break

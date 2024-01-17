@@ -6,7 +6,7 @@ sys.path.append(os.curdir)
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
+from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation, SegformerForSemanticSegmentation
 from torchmetrics.classification import Dice
 
 import src.data.make_dataset as md
@@ -33,7 +33,7 @@ class SegSubLightning(pl.LightningModule):
         item, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, batch_size=self.wandb.config.batch_size, sync_dist=True)
+        self.log('train/loss', loss, on_step=True, on_epoch=True)
 
         return loss
 
@@ -45,7 +45,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         # outputs = self.processor.post_process_instance_segmentation(outputs)
-        self.log('val/loss', loss, on_step=True, batch_size=self.wandb.config.batch_size, sync_dist=True)
+        self.log('val/loss', loss, on_step=True, on_epoch=True)
         # self.val_dice.update(logits, y)
 
         return loss
@@ -61,7 +61,7 @@ class SegSubLightning(pl.LightningModule):
         optimizer = AdamW(
             params=self.model.parameters(),
             lr=self.wandb.config.lr,
-            weight_decay=self.wandb.config.weight_decay
+            # weight_decay=self.wandb.config.weight_decay
         )
 
         return optimizer
@@ -82,7 +82,7 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb.config.num_workers,
             shuffle=True,
             drop_last=True,
-            collate_fn=md.collate_fn,
+            # collate_fn=md.collate_fn,
             pin_memory=True
         )
 
@@ -102,7 +102,7 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb.config.num_workers,
             shuffle=False,
             drop_last=True,
-            collate_fn=md.collate_fn,
+            # collate_fn=md.collate_fn,
             pin_memory=True
         )
 
@@ -113,13 +113,20 @@ def get_processor_model(config, wandb):
         do_rescale=False,
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
-        num_labels=wandb.config.num_labels
+        # num_labels=wandb.config.num_labels
+        reduce_labels=False,
     )
 
-    model = Mask2FormerForUniversalSegmentation.from_pretrained(
+    # model = Mask2FormerForUniversalSegmentation.from_pretrained(
+    #     pretrained_model_name_or_path=wandb.config.model_id,
+    #     num_labels=wandb.config.num_labels,
+    #     ignore_mismatched_sizes=True
+    # )
+
+    model = SegformerForSemanticSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
         num_labels=wandb.config.num_labels,
-        # backbone_config={'num_channels': wandb.config.num_channels},
+        num_channels=wandb.config.num_channels,
         ignore_mismatched_sizes=True
     )
 

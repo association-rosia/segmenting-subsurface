@@ -1,16 +1,18 @@
 random_state: 42
 max_epochs: 10
 
-model_id: 'facebook/mask2former-swin-tiny-coco-instance'
-num_labels: 1
-num_channels: 1
+#model_id: 'facebook/mask2former-swin-tiny-coco-instance'
+model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
+num_labels: 99
+num_channels: 3
 
 dataset_size: 50000
 val_size: 0.2
 dim: '0,1'
 
 batch_size: 16
-num_workers: 23
+#num_workers: 23
+num_workers: 0
 
 lr: 0.0001
 weight_decay: 0.05
