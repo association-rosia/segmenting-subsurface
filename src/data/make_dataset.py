@@ -46,7 +46,7 @@ class SegSubDataset(Dataset):
 
         return item, inputs
 
-    def get_slice(self, item):
+    def get_slice(self, item, dtype):
         volume = np.load(item['volume'], allow_pickle=True)
 
         if item['dim'] == '0':
@@ -56,6 +56,9 @@ class SegSubDataset(Dataset):
         else:
             raise ValueError(f'Unknown dimension: {item["dim"]}')
 
+        slice = torch.from_numpy(slice)
+        slice = slice.to(dtype=dtype)
+
         return torch.from_numpy(slice)
 
     def scale(self, image):
@@ -64,7 +67,7 @@ class SegSubDataset(Dataset):
         return image
 
     def get_image(self, item):
-        slice = self.get_slice(item)
+        slice = self.get_slice(item, dtype=torch.float32)
         slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
         # image = torch.unsqueeze(image, dim=0)
@@ -73,7 +76,7 @@ class SegSubDataset(Dataset):
 
     def get_label(self, item):
         item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
-        label = self.get_slice(item)
+        label = self.get_slice(item, dtype=torch.uint8)
 
         return label
 
