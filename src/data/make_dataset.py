@@ -122,7 +122,6 @@ def get_slices(wandb, volumes):
 
     if wandb.config.dataset_size:
         random.seed(wandb.config.random_state)
-        # TODO: get most similar volumes
         slices = random.sample(slices, k=wandb.config.dataset_size)
 
     return slices
@@ -199,30 +198,45 @@ def compute_image_mean_std(config):
     print('std', std)
 
 
+def get_num_labels(config):
+    labels = []
+    volumes = get_volumes(config, 'training')
+
+    for volume in volumes:
+        label_path = volume.replace('seismic', 'horizon_labels')
+        label = np.load(label_path, allow_pickle=True)
+        labels += np.unique(label).tolist()
+        labels = sorted(list(set(labels)))
+        print(len(labels), labels)
+
+
 if __name__ == '__main__':
     import src.models.make_lightning as ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    wandb = utils.init_wandb()
+    # wandb = utils.init_wandb()
+
+    get_num_labels(config)
     # compute_image_mean_std(config)
-    processor, model = ml.get_processor_model(config, wandb)
-    train_slices, val_slices = get_training_slices(config, wandb)
 
-    args = {
-        'config': config,
-        'wandb': wandb,
-        'processor': processor,
-        'slices': train_slices[:10]
-    }
-
-    train_dataset = SegSubDataset(args)
-    train_dataloader = DataLoader(
-        dataset=train_dataset,
-        batch_size=wandb.config.batch_size,
-        shuffle=False,
-        collate_fn=collate_fn
-    )
-
-    for item, inputs in train_dataloader:
-        break
+    # processor, model = ml.get_processor_model(config, wandb)
+    # train_slices, val_slices = get_training_slices(config, wandb)
+    #
+    # args = {
+    #     'config': config,
+    #     'wandb': wandb,
+    #     'processor': processor,
+    #     'slices': train_slices[:10]
+    # }
+    #
+    # train_dataset = SegSubDataset(args)
+    # train_dataloader = DataLoader(
+    #     dataset=train_dataset,
+    #     batch_size=wandb.config.batch_size,
+    #     shuffle=False,
+    #     collate_fn=collate_fn
+    # )
+    #
+    # for item, inputs in train_dataloader:
+    #     break

@@ -6,7 +6,7 @@ sys.path.append(os.curdir)
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
+from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from torchmetrics.classification import Dice
 
 import src.data.make_dataset as md
@@ -108,7 +108,7 @@ class SegSubLightning(pl.LightningModule):
 
 
 def get_processor_model(config, wandb):
-    processor = Mask2FormerImageProcessor.from_pretrained(
+    processor = AutoImageProcessor.from_pretrained(
         pretrained_model_name_or_path=wandb.config.model_id,
         do_rescale=False,
         image_mean=config['data']['mean'],
