@@ -132,7 +132,7 @@ def get_processor_model(config, wandb):
         pretrained_model_name_or_path=wandb.config.model_id,
         num_labels=wandb.config.num_labels,
         num_channels=wandb.config.num_channels,
-        ignore_index=-1,
+        semantic_loss_ignore_index=-1,
         ignore_mismatched_sizes=True
     )
 
