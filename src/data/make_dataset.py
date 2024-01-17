@@ -59,7 +59,7 @@ class SegSubDataset(Dataset):
         slice = torch.from_numpy(slice)
         slice = slice.to(dtype=dtype)
 
-        return torch.from_numpy(slice)
+        return slice
 
     def scale(self, image):
         image = (image - self.volume_min) / (self.volume_max - self.volume_min)
