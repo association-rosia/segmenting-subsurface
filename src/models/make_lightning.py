@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
-from torchmetrics.classification import Dice
+import torchmetrics as tm
 
 import src.data.make_dataset as md
 import utils
@@ -25,23 +25,24 @@ class SegSubLightning(pl.LightningModule):
         self.val_slices = args['val_slices']
 
         self.criterion = nn.CrossEntropyLoss()
-        # self.val_dice = Dice(num_classes=1, threshold=0.8, average='macro')
+        self.val_dice = tm.classification.Dice(num_classes=wandb.config.num_labels, average='macro')
 
     def forward(self, inputs):
-        outputs = self.model(**inputs)
+        pixel_values = inputs['pixel_values']
+        outputs = self.model(pixel_values=pixel_values)
+        outputs = nn.functional.interpolate(
+            input=outputs.logits,
+            size=pixel_values.shape[-2:],
+            mode='bilinear',
+            align_corners=False
+        )
 
         return outputs
 
     def training_step(self, batch):
         item, inputs = batch
-
-        print(inputs)
-
         outputs = self.forward(inputs)
-
-        print(outputs)
-
-        loss = outputs['loss']
+        loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_step=True, on_epoch=True)
 
         return loss
@@ -52,16 +53,15 @@ class SegSubLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
-        loss = outputs['loss']
-        # outputs = self.processor.post_process_instance_segmentation(outputs)
+        loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_step=True, on_epoch=True)
-        # self.val_dice.update(logits, y)
+        self.val_dice.update(outputs, inputs['labels'])
 
         return loss
 
-    # def on_validation_epoch_end(self):
-    #     self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
-    #     self.val_dice.reset()
+    def on_validation_epoch_end(self):
+        self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
+        self.val_dice.reset()
 
     # def test_step(self, batch, batch_idx):
     #     pass
