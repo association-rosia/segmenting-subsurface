@@ -8,8 +8,6 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
-import random
-
 from sklearn.model_selection import train_test_split
 
 import utils
@@ -21,7 +19,8 @@ class SegSubDataset(Dataset):
         self.config = args['config']
         self.wandb = args['wandb']
         self.processor = args['processor']
-        self.slices = args['slices']
+        self.volumes = args['volumes']
+        self.slices = self.get_slices()
 
         self.volume_min = -1215.0
         self.volume_max = 1930.0
@@ -32,19 +31,31 @@ class SegSubDataset(Dataset):
     def __getitem__(self, idx):
         item = self.slices[idx]
         image = self.get_image(item)
-        # label, instance_id_to_semantic_id = self.get_label(item)
         label = self.get_label(item)
 
         inputs = self.processor(
             images=image,
             segmentation_maps=label,
-            # instance_id_to_semantic_id=instance_id_to_semantic_id,
             return_tensors='pt'
         )
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
         return item, inputs
+
+    def get_slices(self):
+        dims = self.wandb.config.dim.split(',')
+        dilation = self.wandb.config.dilation
+        slices = []
+
+        for volume in self.volumes:
+            for dim in dims:
+                if dim == '0' or dim == '1':
+                    slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 300, dilation)]
+                else:
+                    raise ValueError(f'Unknown dimension: {dim}')
+
+        return slices
 
     def get_slice(self, item, dtype):
         volume = np.load(item['volume'], allow_pickle=True)
@@ -80,32 +91,6 @@ class SegSubDataset(Dataset):
 
         return label
 
-    # def get_label(self, item):
-    #     item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
-    #     slice = self.get_slice(item)
-    #     label = slice - torch.min(slice)
-    #     label = label.to(torch.uint8)
-    #     instance_id_to_semantic_id = {int(i): 0 for i in torch.unique(label).tolist()}
-    #
-    #     return label, instance_id_to_semantic_id
-
-
-# def collate_fn(batch):
-#     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
-#     pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
-#     class_labels = [el[1]['class_labels'] for el in batch]
-#     mask_labels = [el[1]['mask_labels'] for el in batch]
-#     slices = [el[0] for el in batch]
-#
-#     inputs = {
-#         'pixel_values': pixel_values,
-#         'pixel_mask': pixel_mask,
-#         'class_labels': class_labels,
-#         'mask_labels': mask_labels
-#     }
-#
-#     return slices, inputs
-
 
 def get_volumes(config, set):
     root_test = config['path']['data']['raw']['test']
@@ -124,45 +109,11 @@ def get_volumes(config, set):
     return volumes
 
 
-def get_slices(wandb, volumes, set_size):
-    slices = []
-
-    for volume in volumes:
-        slices += get_slices_from_volume(wandb, volume)
-
-    if wandb.config.dataset_size:
-        random.seed(wandb.config.random_state)
-        k = set_size * wandb.config.dataset_size
-        slices = random.sample(slices, k=k)
-
-    return slices
-
-
-def get_slices_from_volume(wandb, volume):
-    slices = []
-
-    for dim in wandb.config.dim.split(','):
-        if dim == '0' or dim == '1':
-            slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(300)]
-        else:
-            raise ValueError(f'Unknown dimension: {dim}')
-
-    return slices
-
-
-def get_training_slices(config, wandb):
+def get_training_volumes(config, wandb):
     training_volumes = get_volumes(config, set='training')
+    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb.config.val_size)
 
-    train_volumes, val_volumes = train_test_split(
-        training_volumes,
-        test_size=wandb.config.val_size,
-        random_state=wandb.config.random_state
-    )
-
-    train_slices = get_slices(wandb, train_volumes, set_size=(1 - wandb.config.val_size))
-    val_slices = get_slices(wandb, val_volumes, set_size=wandb.config.val_size)
-
-    return train_slices, val_slices
+    return train_volumes, val_volumes
 
 
 def get_submission_slices():
@@ -201,7 +152,10 @@ def compute_image_mean_std(config):
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
         # vol = min_max_scaling(vol, min, max)
-        vars.append(np.mean((vol - mean) ** 2))
+        try:
+            vars.append(np.mean((vol - mean) ** 2))
+        except:
+            pass
 
     std = np.sqrt(np.mean(vars))
 
@@ -211,47 +165,30 @@ def compute_image_mean_std(config):
     print('std', std)
 
 
-def get_num_labels(config):
-    labels = []
-    volumes = get_volumes(config, 'training')
-
-    for volume in volumes:
-        label_path = volume.replace('seismic', 'horizon_labels')
-        label = np.load(label_path, allow_pickle=True)
-        labels += np.unique(label).tolist()
-        labels = sorted(list(set(labels)))
-        print(len(labels), labels)
-
-
 if __name__ == '__main__':
     import src.models.make_lightning as ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    compute_image_mean_std(config)
+    # compute_image_mean_std(config)
+    wandb = utils.init_wandb()
 
-    # wandb = utils.init_wandb()
+    processor, model = ml.get_processor_model(config, wandb)
+    train_volumes = get_volumes(config, set='train')
 
-    # processor, model = ml.get_processor_model(config, wandb)
-    # train_slices, val_slices = get_training_slices(config, wandb)
-    #
-    # args = {
-    #     'config': config,
-    #     'wandb': wandb,
-    #     'processor': processor,
-    #     'slices': train_slices
-    # }
-    #
-    # train_dataset = SegSubDataset(args)
-    # train_dataloader = DataLoader(
-    #     dataset=train_dataset,
-    #     batch_size=wandb.config.batch_size,
-    #     shuffle=False
-    # )
-    #
-    # min_value = 99
-    # max_value = 0
-    # for item, inputs in train_dataloader:
-    #     min_value = min(min_value, inputs['labels'].min().item())
-    #     max_value = max(max_value, inputs['labels'].max().item())
-    #     print(min_value, max_value)
+    args = {
+        'config': config,
+        'wandb': wandb,
+        'processor': processor,
+        'volumes': train_volumes,
+    }
+
+    train_dataset = SegSubDataset(args)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=wandb.config.batch_size,
+        shuffle=False
+    )
+
+    for item, inputs in train_dataloader:
+        break

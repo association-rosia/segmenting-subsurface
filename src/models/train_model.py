@@ -38,7 +38,7 @@ def get_trainer(config, wandb):
         max_epochs=wandb.config.max_epochs,
         logger=pl.loggers.WandbLogger(),
         callbacks=[checkpoint_callback],
-        val_check_interval=0.25,
+        # val_check_interval=0.25,
         # accelerator='gpu',
         # devices=1,
         precision='16-mixed'
@@ -48,7 +48,7 @@ def get_trainer(config, wandb):
 
 
 def get_lightning(config, wandb):
-    train_slices, val_slices = md.get_training_slices(config, wandb)
+    train_volumes, val_volumes = md.get_training_volumes(config, wandb)
     processor, model = ml.get_processor_model(config, wandb)
 
     args = {
@@ -56,8 +56,8 @@ def get_lightning(config, wandb):
         'wandb': wandb,
         'model': model,
         'processor': processor,
-        'train_slices': train_slices,
-        'val_slices': val_slices
+        'train_volumes': train_volumes,
+        'val_volumes': val_volumes
     }
 
     lightning = ml.SegSubLightning(args)
