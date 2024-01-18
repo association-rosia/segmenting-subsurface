@@ -170,22 +170,22 @@ def get_submission_slices():
 
 
 def compute_image_mean_std(config):
-    def min_max_scaling(vol, min, max):
-        vol = (vol - min) / (max - min)
-
-        return vol
-
+    # def min_max_scaling(vol, min, max):
+    #     vol = (vol - min) / (max - min)
+    #
+    #     return vol
+    #
     volumes = get_volumes(config, set='train')
-
-    mins, maxs = [], []
-    print('\nCompute min and max :')
-    for volume in tqdm(volumes):
-        vol = np.load(volume, allow_pickle=True)
-        mins.append(np.min(vol))
-        maxs.append(np.max(vol))
-
-    min = np.min(mins)
-    max = np.max(maxs)
+    #
+    # mins, maxs = [], []
+    # print('\nCompute min and max :')
+    # for volume in tqdm(volumes):
+    #     vol = np.load(volume, allow_pickle=True)
+    #     mins.append(np.min(vol))
+    #     maxs.append(np.max(vol))
+    #
+    # min = np.min(mins)
+    # max = np.max(maxs)
 
     means = []
     print('\nCompute mean:')
@@ -205,8 +205,8 @@ def compute_image_mean_std(config):
 
     std = np.sqrt(np.mean(vars))
 
-    print('\nmin', min)
-    print('max', max)
+    # print('\nmin', min)
+    # print('max', max)
     print('mean', mean)
     print('std', std)
 
