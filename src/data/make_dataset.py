@@ -191,7 +191,7 @@ def compute_image_mean_std(config):
     print('\nCompute mean:')
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
-        vol = min_max_scaling(vol, min, max)
+        # vol = min_max_scaling(vol, min, max)
         means.append(np.mean(vol))
 
     mean = np.mean(means)
@@ -200,7 +200,7 @@ def compute_image_mean_std(config):
     print('\nCompute std:')
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
-        vol = min_max_scaling(vol, min, max)
+        # vol = min_max_scaling(vol, min, max)
         vars.append(np.mean((vol - mean) ** 2))
 
     std = np.sqrt(np.mean(vars))

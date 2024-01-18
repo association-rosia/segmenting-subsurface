@@ -12,4 +12,4 @@ dim: '0,1'
 batch_size: 16
 num_workers: 23
 
-lr: 0.001
+lr: 0.0001
