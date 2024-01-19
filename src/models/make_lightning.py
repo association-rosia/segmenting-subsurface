@@ -60,6 +60,12 @@ class SegSubLightning(pl.LightningModule):
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
 
         predictions = torch.argmax(outputs, dim=1)
+
+        print()
+        print(predictions.shape)
+        print(inputs['labels'].shape)
+        print()
+
         self.metrics.update(predictions, inputs['labels'])
 
         if batch_idx == 0:
