@@ -59,15 +59,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'].float())
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-
-        # predictions = torch.argmax(outputs, dim=1)
         outputs = (self.sigmoid(outputs) > 0.5).type(torch.uint8)
-
-        print()
-        print(outputs)
-        print(inputs['labels'].shape)
-        print()
-
         self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
@@ -85,7 +77,7 @@ class SegSubLightning(pl.LightningModule):
                 pixel_values,
                 masks={
                     'predictions': {
-                        'mask_data': predictions
+                        'mask_data': outputs
                     },
                     'ground_truth': {
                         'mask_data': ground_truth
