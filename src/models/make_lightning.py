@@ -59,10 +59,10 @@ class SegSubLightning(pl.LightningModule):
         loss = self.criterion(outputs, inputs['labels'].float())
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
 
-        predictions = torch.argmax(outputs, dim=1)
+        # predictions = torch.argmax(outputs, dim=1)
 
         print()
-        print(predictions.shape)
+        print(outputs.shape)
         print(inputs['labels'].shape)
         print()
 
