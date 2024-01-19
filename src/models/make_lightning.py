@@ -27,6 +27,7 @@ class SegSubLightning(pl.LightningModule):
         self.val_volumes = args['val_volumes']
 
         self.criterion = nn.BCEWithLogitsLoss()
+        self.sigmoid = nn.Sigmoid()
 
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
@@ -60,22 +61,23 @@ class SegSubLightning(pl.LightningModule):
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
 
         # predictions = torch.argmax(outputs, dim=1)
+        outputs = self.sigmoid(outputs) > 0.5
 
         print()
         print(outputs)
         print(inputs['labels'].shape)
         print()
 
-        self.metrics.update(predictions, inputs['labels'])
+        self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
-            self.log_image(inputs, predictions)
+            self.log_image(inputs, outputs)
 
         return loss
 
-    def log_image(self, inputs, predictions):
+    def log_image(self, inputs, outputs):
         pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
-        predictions = predictions[0].numpy(force=True)
+        outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
         self.logger.experiment.log({
