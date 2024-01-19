@@ -101,7 +101,7 @@ class SegSubDataset(Dataset):
         padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size))
         unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
         binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
-        binary_label = 1 - binary_label[:label.shape[0], :label.shape[1]]
+        binary_label = 1 - binary_label[1:label.shape[0] + 1, 1:label.shape[1] + 1]
 
         return binary_label
 
