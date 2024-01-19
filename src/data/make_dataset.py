@@ -84,7 +84,7 @@ class SegSubDataset(Dataset):
 
     def get_image(self, item):
         slice = self.get_slice(item, dtype=torch.float32)
-        # slice = self.scale(slice)
+        slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
 
         return image
@@ -101,8 +101,10 @@ class SegSubDataset(Dataset):
         padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size))
         unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
         binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
-        binary_label = binary_label[:label.shape[0], :label.shape[1]]
+        binary_label = 1 - binary_label[:label.shape[0], :label.shape[1]]
         binary_label = binary_label.to(torch.bool)
+
+        self.plot_slice(binary_label)
 
         return binary_label
 
@@ -150,28 +152,28 @@ def get_submission_slices():
 
 
 def compute_image_mean_std(config):
-    # def min_max_scaling(vol, min, max):
-    #     vol = (vol - min) / (max - min)
-    #
-    #     return vol
-    #
+    def min_max_scaling(vol, min, max):
+        vol = (vol - min) / (max - min)
+
+        return vol
+
     volumes = get_volumes(config, set='train')
-    #
-    # mins, maxs = [], []
-    # print('\nCompute min and max :')
-    # for volume in tqdm(volumes):
-    #     vol = np.load(volume, allow_pickle=True)
-    #     mins.append(np.min(vol))
-    #     maxs.append(np.max(vol))
-    #
-    # min = np.min(mins)
-    # max = np.max(maxs)
+
+    mins, maxs = [], []
+    print('\nCompute min and max :')
+    for volume in tqdm(volumes):
+        vol = np.load(volume, allow_pickle=True)
+        mins.append(np.min(vol))
+        maxs.append(np.max(vol))
+
+    min = np.min(mins)
+    max = np.max(maxs)
 
     means = []
     print('\nCompute mean:')
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
-        # vol = min_max_scaling(vol, min, max)
+        vol = min_max_scaling(vol, min, max)
         means.append(np.mean(vol))
 
     mean = np.mean(means)
@@ -181,13 +183,13 @@ def compute_image_mean_std(config):
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
         vol = vol.astype(np.float64)
-        # vol = min_max_scaling(vol, min, max)
+        vol = min_max_scaling(vol, min, max)
         vars.append(np.mean((vol - mean) ** 2))
 
     std = np.sqrt(np.mean(vars))
 
-    # print('\nmin', min)
-    # print('max', max)
+    print('\nmin', min)
+    print('max', max)
     print('mean', mean)
     print('std', std)
 
@@ -197,7 +199,7 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    compute_image_mean_std(config)
+    # compute_image_mean_std(config)
     wandb = utils.init_wandb()
 
     processor, model = ml.get_processor_model(config, wandb)
@@ -213,7 +215,6 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        # batch_size=wandb.config.batch_size,
         batch_size=1,
         shuffle=False
     )

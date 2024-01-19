@@ -34,15 +34,26 @@ def get_trainer(config, wandb):
         verbose=True
     )
 
-    trainer = pl.Trainer(
-        max_epochs=wandb.config.max_epochs,
-        logger=pl.loggers.WandbLogger(),
-        callbacks=[checkpoint_callback],
-        # val_check_interval=0.25,
-        # accelerator='gpu',
-        # devices=1,
-        precision='16-mixed'
-    )
+    if wandb.config.dry:
+        trainer = pl.Trainer(
+            max_epochs=1,
+            logger=pl.loggers.WandbLogger(),
+            callbacks=[checkpoint_callback],
+            # accelerator='gpu',
+            devices=1,
+            precision='16-mixed',
+            limit_train_batches=1,
+            limit_val_batches=1
+        )
+    else:
+        trainer = pl.Trainer(
+            max_epochs=wandb.config.max_epochs,
+            logger=pl.loggers.WandbLogger(),
+            callbacks=[checkpoint_callback],
+            accelerator='gpu',
+            devices=1,
+            precision='16-mixed'
+        )
 
     return trainer
 

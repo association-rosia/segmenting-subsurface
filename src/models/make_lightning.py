@@ -24,20 +24,22 @@ class SegSubLightning(pl.LightningModule):
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
 
-        self.criterion = nn.CrossEntropyLoss()
-        self.val_dice = tm.classification.Dice(num_classes=self.wandb.config.num_labels, average='macro')
+        self.criterion = nn.BCEWithLogitsLoss()
+
+        self.metrics = tm.MetricCollection({
+            'val/iou': tm.classification.BinaryJaccardIndex(),
+            'val/acc': tm.classification.BinaryAccuracy(),
+            'val/dice': tm.classification.Dice()
+        })
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
         outputs = self.model(pixel_values=pixel_values)
-        outputs = nn.functional.interpolate(
-            input=outputs.logits,
-            size=pixel_values.shape[-2:],
-            mode='bilinear',
-            align_corners=False
+        upsampled_logits = nn.functional.interpolate(
+            outputs.logits, size=pixel_values.shape[-2:], mode='bilinear', align_corners=False
         )
 
-        return outputs
+        return upsampled_logits
 
     def training_step(self, batch):
         item, inputs = batch
@@ -52,13 +54,36 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        self.val_dice.update(outputs, inputs['labels'])
+        self.metrics.update(outputs, inputs['labels'])
+
+        if batch_idx == 0:
+            self.log_image(inputs, outputs)
 
         return loss
 
+    def log_image(self, inputs, outputs):
+        pixel_values = inputs['pixel_values'][0][0].numpy()
+        predictions = outputs[0].numpy()
+        ground_truth = inputs['labels'][0].numpy()
+
+        self.logger.experiment.log({
+            'pixel_values': wandb.Image(
+                pixel_values,
+                masks={
+                    'predictions': {
+                        'mask_data': predictions
+                    },
+                    'ground_truth': {
+                        'mask_data': ground_truth
+                    }
+                }
+            )
+        })
+
     def on_validation_epoch_end(self):
-        self.log('val/dice', self.val_dice.compute(), on_epoch=True, sync_dist=True)
-        self.val_dice.reset()
+        metrics = self.metrics.compute()
+        self.log_dict(metrics, on_epoch=True, sync_dist=True)
+        self.metrics.reset()
 
     def configure_optimizers(self):
         optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
