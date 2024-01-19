@@ -54,6 +54,9 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
+
+        print(outputs.shape, inputs['labels'].shape)
+
         self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
