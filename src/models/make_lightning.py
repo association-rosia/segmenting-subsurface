@@ -3,6 +3,7 @@ import sys
 
 sys.path.append(os.curdir)
 
+import wandb
 from torch import nn
 import pytorch_lightning as pl
 from torch.optim import AdamW
