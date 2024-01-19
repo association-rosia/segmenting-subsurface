@@ -61,7 +61,7 @@ class SegSubLightning(pl.LightningModule):
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
 
         # predictions = torch.argmax(outputs, dim=1)
-        outputs = self.sigmoid(outputs) > 0.5
+        outputs = (self.sigmoid(outputs) > 0.5).type(torch.uint8)
 
         print()
         print(outputs)
