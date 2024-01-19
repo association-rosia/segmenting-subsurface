@@ -39,6 +39,8 @@ class SegSubLightning(pl.LightningModule):
             outputs.logits, size=pixel_values.shape[-2:], mode='bilinear', align_corners=False
         )
 
+        upsampled_logits = upsampled_logits.squeeze()
+
         return upsampled_logits
 
     def training_step(self, batch):
@@ -54,9 +56,6 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-
-        print(outputs.shape, inputs['labels'].shape)
-
         self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
