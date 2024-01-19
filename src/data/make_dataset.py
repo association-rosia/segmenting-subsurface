@@ -102,9 +102,6 @@ class SegSubDataset(Dataset):
         unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
         binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
         binary_label = 1 - binary_label[:label.shape[0], :label.shape[1]]
-        binary_label = binary_label.to(torch.bool)
-
-        self.plot_slice(binary_label)
 
         return binary_label
 

@@ -39,7 +39,7 @@ class SegSubLightning(pl.LightningModule):
             outputs.logits, size=pixel_values.shape[-2:], mode='bilinear', align_corners=False
         )
 
-        upsampled_logits = upsampled_logits.squeeze()
+        upsampled_logits = upsampled_logits.squeeze(1)
 
         return upsampled_logits
 
