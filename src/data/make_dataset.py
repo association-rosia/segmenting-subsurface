@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as F
 
 import utils
@@ -43,8 +44,6 @@ class SegSubDataset(Dataset):
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
         inputs['labels'] = self.get_binary_label(inputs['labels'])
-
-        self.plot_slice(inputs['labels'])
 
         return item, inputs
 
@@ -85,9 +84,8 @@ class SegSubDataset(Dataset):
 
     def get_image(self, item):
         slice = self.get_slice(item, dtype=torch.float32)
-        slice = self.scale(slice)
+        # slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
-        # image = torch.unsqueeze(image, dim=0)
 
         return image
 
@@ -109,10 +107,16 @@ class SegSubDataset(Dataset):
         return binary_label
 
     def plot_slice(self, slice):
+        ax = plt.subplot()
+
         if slice.shape[0] == 3:
-            plt.imshow(slice[0], cmap='gray')
+            im = ax.imshow(slice[0], cmap='gray')
         else:
-            plt.imshow(slice, cmap='gray')
+            im = ax.imshow(slice, cmap='gray')
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        plt.colorbar(im, cax=cax)
 
         plt.show()
 
@@ -176,11 +180,9 @@ def compute_image_mean_std(config):
     print('\nCompute std:')
     for volume in tqdm(volumes):
         vol = np.load(volume, allow_pickle=True)
+        vol = vol.astype(np.float64)
         # vol = min_max_scaling(vol, min, max)
-        try:
-            vars.append(np.mean((vol - mean) ** 2))
-        except:
-            pass
+        vars.append(np.mean((vol - mean) ** 2))
 
     std = np.sqrt(np.mean(vars))
 
@@ -195,7 +197,7 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
-    # compute_image_mean_std(config)
+    compute_image_mean_std(config)
     wandb = utils.init_wandb()
 
     processor, model = ml.get_processor_model(config, wandb)
