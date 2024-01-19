@@ -29,7 +29,7 @@ class SegSubLightning(pl.LightningModule):
 
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
-            'val/acc': tm.classification.BinaryAccuracy(),
+            'val/acc': tm.classification.BinaryAccuracy(ignore_index=0),
             'val/dice': tm.classification.Dice()
         })
 
