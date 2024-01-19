@@ -46,7 +46,7 @@ class SegSubLightning(pl.LightningModule):
     def training_step(self, batch):
         item, inputs = batch
         outputs = self.forward(inputs)
-        loss = self.criterion(outputs, inputs['labels'])
+        loss = self.criterion(outputs, inputs['labels'].float())
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
 
         return loss
@@ -54,9 +54,9 @@ class SegSubLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
-        loss = self.criterion(outputs, inputs['labels'])
+        loss = self.criterion(outputs, inputs['labels'].float())
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        self.metrics.update(outputs, inputs['labels'])
+        self.metrics.update(outputs, inputs['labels'].float())
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
