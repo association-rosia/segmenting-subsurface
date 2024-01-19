@@ -62,7 +62,7 @@ class SegSubLightning(pl.LightningModule):
         # predictions = torch.argmax(outputs, dim=1)
 
         print()
-        print(outputs.shape)
+        print(outputs)
         print(inputs['labels'].shape)
         print()
 
