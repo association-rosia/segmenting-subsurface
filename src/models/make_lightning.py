@@ -64,9 +64,9 @@ class SegSubLightning(pl.LightningModule):
         return loss
 
     def log_image(self, inputs, outputs):
-        pixel_values = inputs['pixel_values'][0][0].numpy()
-        predictions = outputs[0].numpy()
-        ground_truth = inputs['labels'][0].numpy()
+        pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
+        predictions = outputs[0].numpy(force=True)
+        ground_truth = inputs['labels'][0].numpy(force=True)
 
         self.logger.experiment.log({
             'pixel_values': wandb.Image(
