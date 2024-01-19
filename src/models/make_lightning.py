@@ -10,6 +10,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
+import torch
 
 import src.data.make_dataset as md
 import utils
@@ -57,16 +58,18 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'].float())
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        self.metrics.update(outputs, inputs['labels'])
+
+        predictions = torch.argmax(outputs, dim=1)
+        self.metrics.update(predictions, inputs['labels'])
 
         if batch_idx == 0:
-            self.log_image(inputs, outputs)
+            self.log_image(inputs, predictions)
 
         return loss
 
-    def log_image(self, inputs, outputs):
+    def log_image(self, inputs, predictions):
         pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
-        predictions = outputs[0].numpy(force=True)
+        predictions = predictions[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
         self.logger.experiment.log({
