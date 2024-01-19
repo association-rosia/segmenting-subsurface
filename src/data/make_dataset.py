@@ -9,6 +9,8 @@ import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import torch.nn.functional as F
 
 import utils
 
@@ -40,6 +42,9 @@ class SegSubDataset(Dataset):
         )
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+        inputs['labels'] = self.get_binary_label(inputs['labels'])
+
+        self.plot_slice(inputs['labels'])
 
         return item, inputs
 
@@ -69,6 +74,7 @@ class SegSubDataset(Dataset):
 
         slice = torch.from_numpy(slice)
         slice = slice.to(dtype=dtype)
+        slice = slice.T
 
         return slice
 
@@ -90,6 +96,25 @@ class SegSubDataset(Dataset):
         label = self.get_slice(item, dtype=torch.uint8)
 
         return label
+
+    def get_binary_label(self, label, kernel=2):
+        label = label.float()
+        padding_size = kernel // 2
+        padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size))
+        unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
+        binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
+        binary_label = binary_label[:label.shape[0], :label.shape[1]]
+        binary_label = binary_label.to(torch.bool)
+
+        return binary_label
+
+    def plot_slice(self, slice):
+        if slice.shape[0] == 3:
+            plt.imshow(slice[0], cmap='gray')
+        else:
+            plt.imshow(slice, cmap='gray')
+
+        plt.show()
 
 
 def get_volumes(config, set):
@@ -186,7 +211,8 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=wandb.config.batch_size,
+        # batch_size=wandb.config.batch_size,
+        batch_size=1,
         shuffle=False
     )
 
