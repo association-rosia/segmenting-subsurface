@@ -96,14 +96,15 @@ class SegSubDataset(Dataset):
         return label
 
     def get_binary_label(self, label, kernel=3):
-        label = label.float()
-        padding_size = kernel
-        padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size), value=None)
-        unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
-        binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
-        binary_label = 1 - binary_label[1:label.shape[0] + 1, 1:label.shape[1] + 1]
+        label = label.view(1, 1, label.shape[0], label.shape[1]).float()
+        pad_size = (kernel - 1) // 2
+        padded_label = F.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
+        unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
+        binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
+        binary_label = 1 - binary_label.squeeze()
 
-        self.plot_slice(binary_label)
+        # print(binary_label.shape)
+        # self.plot_slice(binary_label)
 
         return binary_label
 
