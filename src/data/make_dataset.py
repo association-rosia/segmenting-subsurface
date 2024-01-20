@@ -148,7 +148,7 @@ def get_class_frequencies(train_dataloader):
     class_frequencies = {}
     count_all = 0
 
-    for _, inputs in train_dataloader:
+    for _, inputs in tqdm(train_dataloader):
         labels = inputs['labels']
         values, counts = labels.unique(return_counts=True)
         count_all += counts.sum().item()
