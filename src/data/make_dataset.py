@@ -98,7 +98,7 @@ class SegSubDataset(Dataset):
     def get_binary_label(self, label, kernel=3):
         label = label.float()
         padding_size = kernel
-        padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size), value=1)
+        padded_label = F.pad(label, (padding_size, padding_size, padding_size, padding_size), value=None)
         unfolded = padded_label.unfold(0, kernel, 1).unfold(1, kernel, 1)
         binary_label = (unfolded.std(dim=(2, 3)) == 0).byte()
         binary_label = 1 - binary_label[1:label.shape[0] + 1, 1:label.shape[1] + 1]
