@@ -103,9 +103,6 @@ class SegSubDataset(Dataset):
         binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
         binary_label = 1 - binary_label.squeeze()
 
-        # print(binary_label.shape)
-        # self.plot_slice(binary_label)
-
         return binary_label
 
     def plot_slice(self, slice):
@@ -147,8 +144,27 @@ def get_training_volumes(config, wandb):
     return train_volumes, val_volumes
 
 
-def get_submission_slices():
-    return  # TODO
+def get_class_frequencies(train_dataloader):
+    class_frequencies = {}
+    count_all = 0
+
+    for _, inputs in train_dataloader:
+        labels = inputs['labels']
+        values, counts = labels.unique(return_counts=True)
+        count_all += counts.sum().item()
+
+        for value, count in zip(values, counts):
+            value = value.item()
+            count = count.item()
+
+            if value in class_frequencies.keys():
+                class_frequencies[value] += count
+            else:
+                class_frequencies[value] = count
+
+    print('class_frequencies', class_frequencies)
+    print('count_all', count_all)
+    print('class_weights', {k: 1 / (v / count_all) for k, v in class_frequencies.items()})
 
 
 def compute_image_mean_std(config):
@@ -215,9 +231,11 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=1,
+        batch_size=16,
         shuffle=False
     )
 
-    for item, inputs in train_dataloader:
-        break
+    get_class_frequencies(train_dataloader)
+
+    # for item, inputs in train_dataloader:
+    #     break
