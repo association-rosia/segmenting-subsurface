@@ -32,7 +32,7 @@ class SegSubLightning(pl.LightningModule):
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
             'val/f1-score': tm.classification.BinaryF1Score(),
-            'val/dice': tm.classification.Dice()
+            # 'val/dice': tm.classification.Dice()
         })
 
     def forward(self, inputs):
