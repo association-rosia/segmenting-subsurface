@@ -7,11 +7,11 @@ model_id: 'nvidia/segformer-b3-finetuned-ade-512-512'
 num_labels: 1
 num_channels: 3
 
-dilation: 30
+dilation: 1 # 30
 val_size: 0.2
 dim: '0'
 
-batch_size: 16
+batch_size: 256
 num_workers: 23
 
 lr: 0.0001
