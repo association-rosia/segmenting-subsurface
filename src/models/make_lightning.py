@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
 import torch
+import torch.nn.functional as F
 
 import src.data.make_dataset as md
 import utils
@@ -26,14 +27,10 @@ class SegSubLightning(pl.LightningModule):
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
 
-        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
-        self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        self.sigmoid = nn.Sigmoid()
-
+        self.criterion = self.configure_criterion()
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
-            'val/f1-score': tm.classification.BinaryF1Score(),
-            # 'val/dice': tm.classification.Dice()
+            'val/f1-score': tm.classification.BinaryF1Score()
         })
 
     def forward(self, inputs):
@@ -60,7 +57,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'].float())
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        outputs = (self.sigmoid(outputs) > 0.5).type(torch.uint8)
+        outputs = (F.sigmoid(outputs) > 0.5).type(torch.uint8)
         self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
@@ -85,7 +82,7 @@ class SegSubLightning(pl.LightningModule):
                     }
                 }
             )
-        })
+        }, on_epoch=True, sync_dist=True)
 
     def on_validation_epoch_end(self):
         metrics = self.metrics.compute()
@@ -97,12 +94,24 @@ class SegSubLightning(pl.LightningModule):
 
         return optimizer
 
+    def configure_criterion(self):
+        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
+
+        if self.wandb.config.criterion == 'BCEWithLogitsLoss':
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
+            criterion = JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
+        else:
+            raise ValueError('Unknown criterion name')
+
+        return criterion
+
     def train_dataloader(self):
         args = {
             'config': self.config,
             'wandb': self.wandb,
             'processor': self.processor,
-            'volumes': self.train_volumes,
+            'volumes': self.train_volumes
         }
 
         dataset_train = md.SegSubDataset(args)
@@ -142,7 +151,7 @@ def get_processor_model(config, wandb):
         do_rescale=False,
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
-        do_reduce_labels=False,
+        do_reduce_labels=False
     )
 
     model = SegformerForSemanticSegmentation.from_pretrained(
@@ -153,6 +162,25 @@ def get_processor_model(config, wandb):
     )
 
     return processor, model
+
+
+class JaccardBCEWithLogitsLoss(nn.Module):
+    def __init__(self, pos_weight=None):
+        super(JaccardBCEWithLogitsLoss, self).__init__()
+        self.pos_weight = pos_weight
+
+    def forward(self, logits, labels, smooth=1):
+        logits = logits.view(-1)
+        outputs = F.sigmoid(logits)
+        outputs = outputs.view(-1)
+        labels = labels.view(-1)
+
+        intersection = (outputs * labels).sum()
+        total = (outputs + labels).sum()
+        jaccard = (intersection + smooth) / (total - intersection + smooth)
+        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=self.pos_weight)
+
+        return jaccard + bce
 
 
 if __name__ == '__main__':

@@ -2,8 +2,9 @@ dry: false
 
 random_state: 42
 max_epochs: 50
+criterion: 'JaccardBCEWithLogitsLoss'
 
-model_id: 'nvidia/segformer-b3-finetuned-ade-512-512'
+model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
 num_labels: 1
 num_channels: 3
 
@@ -14,4 +15,4 @@ dim: '0'
 batch_size: 16
 num_workers: 23
 
-lr: 0.0001
+lr: 0.005
