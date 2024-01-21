@@ -13,8 +13,9 @@ num_channels: 3
 dilation: 30
 val_size: 0.2
 dim: '0'
+#label_type: 'border' # 'layer'
 
 batch_size: 16
 num_workers: 23
 
-lr: 0.0005
+lr: 0.0001
