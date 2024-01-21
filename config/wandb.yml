@@ -13,7 +13,7 @@ dilation: 30
 val_size: 0.2
 dim: '0'
 
-batch_size: 16
+batch_size: 8
 num_workers: 23
 
 lr: 0.005
