@@ -27,7 +27,8 @@ class SegSubLightning(pl.LightningModule):
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
 
-        self.criterion = self.configure_criterion()
+        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
+        self.criterion = self.configure_criterion(pos_weight)
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
             'val/f1-score': tm.classification.BinaryF1Score()
@@ -94,9 +95,7 @@ class SegSubLightning(pl.LightningModule):
 
         return optimizer
 
-    def configure_criterion(self):
-        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
-
+    def configure_criterion(self, pos_weight):
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
