@@ -5,7 +5,8 @@ max_epochs: 50
 criterion: 'JaccardBCEWithLogitsLoss'
 pos_weight: 15 # computed with md.get_class_frequencies()
 
-model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
+#model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
+model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
 num_labels: 1
 num_channels: 3
 
@@ -13,7 +14,7 @@ dilation: 30
 val_size: 0.2
 dim: '0'
 
-batch_size: 8
+batch_size: 16
 num_workers: 23
 
-lr: 0.005
+lr: 0.0005
