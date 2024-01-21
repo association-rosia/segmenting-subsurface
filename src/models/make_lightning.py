@@ -82,7 +82,7 @@ class SegSubLightning(pl.LightningModule):
                     }
                 }
             )
-        }, on_epoch=True, sync_dist=True)
+        })
 
     def on_validation_epoch_end(self):
         metrics = self.metrics.compute()
