@@ -95,7 +95,7 @@ class SegSubLightning(pl.LightningModule):
         return optimizer
 
     def configure_criterion(self):
-        pos_weight = torch.Tensor([self.wandb.config.lr.pos_weight])
+        pos_weight = torch.Tensor([self.wandb.config.pos_weight])
 
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
