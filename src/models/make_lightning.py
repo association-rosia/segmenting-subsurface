@@ -112,7 +112,7 @@ class SegSubLightning(pl.LightningModule):
         if label_type == 'border':
             pos_weight = torch.Tensor([15])
         elif label_type == 'layer':
-            pos_weight = None
+            pos_weight = torch.Tensor([1])
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
 
