@@ -27,8 +27,7 @@ class SegSubLightning(pl.LightningModule):
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
 
-        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
-        self.criterion = self.configure_criterion(pos_weight)
+        self.criterion = self.configure_criterion()
         self.metrics = tm.MetricCollection({
             'val/iou': tm.classification.BinaryJaccardIndex(),
             'val/f1-score': tm.classification.BinaryF1Score()
@@ -95,7 +94,9 @@ class SegSubLightning(pl.LightningModule):
 
         return optimizer
 
-    def configure_criterion(self, pos_weight):
+    def configure_criterion(self):
+        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
+
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
@@ -174,17 +175,12 @@ class JaccardBCEWithLogitsLoss(nn.Module):
         outputs = outputs.view(-1)
         labels = labels.view(-1)
 
-        print()
-        print(logits.device)
-        print(outputs.device)
-        print(labels.device)
-        print(self.pos_weight.device)
-        print()
-
         intersection = (outputs * labels).sum()
         total = (outputs + labels).sum()
         jaccard = (intersection + smooth) / (total - intersection + smooth)
-        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=self.pos_weight)
+
+        pos_weight = self.pos_weight.to(logits.device)
+        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=pos_weight)
 
         return jaccard + bce
 
