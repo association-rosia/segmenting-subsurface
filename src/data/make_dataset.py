@@ -95,13 +95,30 @@ class SegSubDataset(Dataset):
 
         return label
 
-    def get_binary_label(self, label, kernel=3):
+    def get_binary_label(self, label):
+        label_type = self.wandb.config.label_type
+
+        if label_type == 'border':
+            binary_label = self.get_border_label(label)
+        elif label_type == 'layer':
+            binary_label = self.get_layer_label(label)
+        else:
+            raise ValueError(f'Unknown label_type: {label_type}')
+
+        return binary_label
+
+    def get_border_label(self, label, kernel=3):
         label = label.view(1, 1, label.shape[0], label.shape[1]).float()
         pad_size = (kernel - 1) // 2
         padded_label = F.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
         binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
         binary_label = 1 - binary_label.squeeze()
+
+        return binary_label
+
+    def get_layer_label(self, label):
+        binary_label = torch.where(label % 2 == 0, 1, 0)
 
         return binary_label
 

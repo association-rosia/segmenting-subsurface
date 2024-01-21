@@ -102,7 +102,7 @@ class SegSubLightning(pl.LightningModule):
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
             criterion = JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
         else:
-            raise ValueError('Unknown criterion name')
+            raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
         return criterion
 
