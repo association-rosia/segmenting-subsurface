@@ -174,6 +174,10 @@ class JaccardBCEWithLogitsLoss(nn.Module):
         outputs = outputs.view(-1)
         labels = labels.view(-1)
 
+        print(logits.device)
+        print(outputs.device)
+        print(labels.device)
+
         intersection = (outputs * labels).sum()
         total = (outputs + labels).sum()
         jaccard = (intersection + smooth) / (total - intersection + smooth)
