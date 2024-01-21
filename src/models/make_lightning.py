@@ -26,7 +26,7 @@ class SegSubLightning(pl.LightningModule):
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
 
-        pos_weight = torch.Tensor(15)  # computed with md.get_class_frequencies()
+        pos_weight = torch.Tensor([15])  # computed with md.get_class_frequencies()
         self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         self.sigmoid = nn.Sigmoid()
 
