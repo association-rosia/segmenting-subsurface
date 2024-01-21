@@ -3,12 +3,12 @@ dry: false
 random_state: 42
 max_epochs: 50
 criterion: 'JaccardBCEWithLogitsLoss'
-pos_weight: 15 # computed with md.get_class_frequencies()
 
 #model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
 model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
 num_labels: 1
 num_channels: 3
+contrast_factor: 1
 
 dilation: 30
 val_size: 0.2

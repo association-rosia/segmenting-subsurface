@@ -95,7 +95,7 @@ class SegSubLightning(pl.LightningModule):
         return optimizer
 
     def configure_criterion(self):
-        pos_weight = torch.Tensor([self.wandb.config.pos_weight])
+        pos_weight = self.get_pos_weight()
 
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -105,6 +105,18 @@ class SegSubLightning(pl.LightningModule):
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
         return criterion
+
+    def get_pos_weight(self):
+        label_type = self.wandb.config.label_type
+
+        if label_type == 'border':
+            pos_weight = torch.Tensor([15])
+        elif label_type == 'layer':
+            pos_weight = None
+        else:
+            raise ValueError(f'Unknown label_type: {label_type}')
+
+        return pos_weight
 
     def train_dataloader(self):
         args = {

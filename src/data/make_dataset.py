@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as F
+import torchvision.transforms.functional as FV
 
 import utils
 
@@ -24,7 +25,6 @@ class SegSubDataset(Dataset):
         self.processor = args['processor']
         self.volumes = args['volumes']
         self.slices = self.get_slices()
-
         self.volume_min = -1215.0
         self.volume_max = 1930.0
 
@@ -86,6 +86,8 @@ class SegSubDataset(Dataset):
         slice = self.get_slice(item, dtype=torch.float32)
         slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
+        contrast_factor = self.wandb.config.contrast_factor
+        image = FV.adjust_contrast(image, contrast_factor=contrast_factor)
 
         return image
 
@@ -248,11 +250,11 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=16,
+        batch_size=1,
         shuffle=False
     )
 
-    get_class_frequencies(train_dataloader)
+    # get_class_frequencies(train_dataloader)
 
-    # for item, inputs in train_dataloader:
-    #     break
+    for item, inputs in train_dataloader:
+        break
