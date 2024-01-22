@@ -43,7 +43,7 @@ class SegSubDataset(Dataset):
         )
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-        inputs['labels'] = self.get_binary_label(inputs['labels'])
+        inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
 
@@ -97,17 +97,19 @@ class SegSubDataset(Dataset):
 
         return label
 
-    def get_binary_label(self, label):
+    def process_label(self, label):
         label_type = self.wandb.config.label_type
 
         if label_type == 'border':
-            binary_label = self.get_border_label(label)
+            label = self.get_border_label(label)
         elif label_type == 'layer':
-            binary_label = self.get_layer_label(label)
+            label = self.get_layer_label(label)
+        elif label_type == 'instance':
+            label = self.get_instance_label(label)
         else:
-            raise ValueError(f'Unknown label_type: {label_type}')
+            pass  # label = label
 
-        return binary_label
+        return label
 
     def get_border_label(self, label, kernel=3):
         label = label.view(1, 1, label.shape[0], label.shape[1]).float()
@@ -123,6 +125,11 @@ class SegSubDataset(Dataset):
         binary_label = torch.where(label % 2 == 0, 1, 0)
 
         return binary_label
+
+    def get_instance_label(self, label):
+        label = label - label.min()
+
+        return label
 
     def plot_slice(self, slice):
         ax = plt.subplot()

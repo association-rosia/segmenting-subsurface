@@ -71,7 +71,6 @@ class SegSubLightning(pl.LightningModule):
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
-        # TODO: log a table of images, not only one
         class_labels = {0: 'Class 0', 1: 'Class 1'}
         self.wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
