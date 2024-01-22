@@ -18,4 +18,4 @@ label_type: 'layer'
 batch_size: 16
 num_workers: 23
 
-lr: 0.0005
+lr: 0.0002
