@@ -81,7 +81,7 @@ class SegSubLightning(pl.LightningModule):
         self.wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
                 'predictions': {
-                    'mask_data': outputs,
+                    'mask_data': outputs.argmax(dim=0),
                     'class_labels': class_labels
                 },
                 'ground_truth': {
