@@ -31,7 +31,7 @@ class SegSubLightning(pl.LightningModule):
 
         self.criterion = self.configure_criterion()
         self.metrics = tm.MetricCollection({
-            'val/dice': tm.Dice(num_class=self.wandb.config.num_labels, esaverage='macro'),
+            'val/dice': tm.Dice(num_classes=self.wandb.config.num_labels, average='macro'),
             'val/iou': tm.JaccardIndex(task=self.get_task(), num_classes=self.wandb.config.num_labels),
         })
 
