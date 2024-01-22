@@ -36,7 +36,7 @@ def get_trainer(config, wandb):
 
     if wandb.config.dry:
         trainer = pl.Trainer(
-            max_epochs=1,
+            max_epochs=3,
             logger=pl.loggers.WandbLogger(),
             callbacks=[checkpoint_callback],
             devices=1,
