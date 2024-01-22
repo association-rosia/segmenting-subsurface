@@ -29,6 +29,7 @@ class SegSubLightning(pl.LightningModule):
 
         self.criterion = self.configure_criterion()
         self.metrics = tm.MetricCollection({
+            'val/dice': tm.Dice(),
             'val/iou': tm.classification.BinaryJaccardIndex(),
             'val/f1-score': tm.classification.BinaryF1Score()
         })
