@@ -8,8 +8,6 @@ class DiceLoss(nn.Module):
 
     def forward(self, logits, labels, smooth=1):
         outputs = F.sigmoid(logits)
-        outputs = outputs.view(-1)
-        labels = labels.view(-1)
 
         intersection = (outputs * labels).sum()
         dice = (2. * intersection + smooth) / (outputs.sum() + labels.sum() + smooth)
