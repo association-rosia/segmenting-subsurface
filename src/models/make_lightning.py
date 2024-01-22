@@ -123,6 +123,8 @@ class SegSubLightning(pl.LightningModule):
             pos_weight = torch.Tensor([15])
         elif label_type == 'layer':
             pos_weight = torch.Tensor([1])
+        elif label_type == 'semantic':
+            pos_weight = None
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
 
