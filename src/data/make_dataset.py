@@ -106,8 +106,10 @@ class SegSubDataset(Dataset):
             label = self.get_layer_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
+        elif label_type == 'semantic':
+            label = label
         else:
-            pass  # label = label
+            raise ValueError(f'Unknown label_type: {label_type}')
 
         return label
 
@@ -257,7 +259,7 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=1,
+        batch_size=50,
         shuffle=False
     )
 
