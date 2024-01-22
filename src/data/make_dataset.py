@@ -99,6 +99,7 @@ class SegSubDataset(Dataset):
 
     def process_label(self, label):
         label_type = self.wandb.config.label_type
+        print(label_type)
 
         if label_type == 'border':
             label = self.get_border_label(label)
