@@ -40,9 +40,9 @@ class JaccardCrossEntropyLoss(nn.Module):
         outputs = F.sigmoid(logits)
 
         print(outputs.shape)
-        print(outputs.view(-1).shape)
+        # print(outputs.view(-1).shape)
         print(labels.shape)
-        print(labels.view(-1).shape)
+        # print(labels.view(-1).shape)
 
         intersection = (outputs * labels).sum()
         jaccard = (intersection + smooth) / ((outputs + labels).sum() - intersection + smooth)
