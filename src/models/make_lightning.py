@@ -65,7 +65,7 @@ class SegSubLightning(pl.LightningModule):
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
         outputs = (F.sigmoid(outputs) > 0.5).type(torch.uint8)
-        self.metrics.update(outputs, inputs['labels'])
+        self.metrics.update(outputs, inputs['labels'].float())
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
