@@ -4,15 +4,17 @@ import sys
 sys.path.append(os.curdir)
 
 import wandb
+import torch
 from torch import nn
-import pytorch_lightning as pl
+import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
+import pytorch_lightning as pl
+
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
-import torch
-import torch.nn.functional as F
 
+import src.models.make_loss as ml
 import src.data.make_dataset as md
 import utils
 
@@ -99,8 +101,12 @@ class SegSubLightning(pl.LightningModule):
 
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        elif self.wandb.config.criterion == 'DiceLoss':
+            criterion = ml.DiceLoss()
+        elif self.wandb.config.criterion == 'DiceBCEWithLogitsLoss':
+            criterion = ml.DiceBCEWithLogitsLoss(pos_weight=pos_weight)
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
-            criterion = JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = ml.JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
@@ -174,27 +180,6 @@ def get_processor_model(config, wandb):
     )
 
     return processor, model
-
-
-class JaccardBCEWithLogitsLoss(nn.Module):
-    def __init__(self, pos_weight=None):
-        super(JaccardBCEWithLogitsLoss, self).__init__()
-        self.pos_weight = pos_weight
-
-    def forward(self, logits, labels, smooth=1):
-        logits = logits.view(-1)
-        outputs = F.sigmoid(logits)
-        outputs = outputs.view(-1)
-        labels = labels.view(-1)
-
-        intersection = (outputs * labels).sum()
-        total = (outputs + labels).sum()
-        jaccard = (intersection + smooth) / (total - intersection + smooth)
-
-        pos_weight = self.pos_weight.to(logits.device)
-        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=pos_weight)
-
-        return jaccard + bce
 
 
 if __name__ == '__main__':

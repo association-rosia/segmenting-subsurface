@@ -1,8 +1,9 @@
 import os
 
 import torch
-import wandb
 import yaml
+
+import wandb
 
 
 def get_device():
