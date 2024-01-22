@@ -103,8 +103,8 @@ class SegSubLightning(pl.LightningModule):
     def configure_criterion(self):
         weight = self.get_weight()
 
-        if self.wandb.config.criterion == 'BCEWithLogitsLoss':
-            criterion = nn.BCEWithLogitsLoss(pos_weight=weight)
+        if self.wandb.config.criterion == 'CrossEntropyLoss':
+            criterion = nn.CrossEntropyLoss(weight=weight)
         elif self.wandb.config.criterion == 'DiceLoss':
             criterion = losses.DiceLoss()
         elif self.wandb.config.criterion == 'DiceCrossEntropyLoss':
