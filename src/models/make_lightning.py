@@ -108,9 +108,9 @@ class SegSubLightning(pl.LightningModule):
         elif self.wandb.config.criterion == 'DiceLoss':
             criterion = losses.DiceLoss()
         elif self.wandb.config.criterion == 'DiceBCEWithLogitsLoss':
-            criterion = losses.DiceBCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = losses.DiceCrossEntropyLoss(weight=pos_weight)
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
-            criterion = losses.JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = losses.JaccardCrossEntropyLoss(pos_weight=pos_weight)
         else:
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 

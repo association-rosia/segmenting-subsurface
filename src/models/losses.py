@@ -17,40 +17,34 @@ class DiceLoss(nn.Module):
         return 1 - dice
 
 
-class DiceBCEWithLogitsLoss(nn.Module):
-    def __init__(self, pos_weight=None):
-        super(DiceBCEWithLogitsLoss, self).__init__()
-        self.pos_weight = pos_weight
+class DiceCrossEntropyLoss(nn.Module):
+    def __init__(self, weight=None):
+        super(DiceCrossEntropyLoss, self).__init__()
+        self.weight = weight
 
     def forward(self, logits, labels, smooth=1):
-        logits = logits.view(-1)
         outputs = F.sigmoid(logits)
-        outputs = outputs.view(-1)
-        labels = labels.view(-1)
 
         dice = (2. * (outputs * labels).sum() + smooth) / (outputs.sum() + labels.sum() + smooth)
 
-        pos_weight = self.pos_weight.to(logits.device)
-        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=pos_weight)
+        weight = self.weight.to(logits.device)
+        cross_entropy = F.cross_entropy(logits, labels, weight=weight)
 
-        return 1 - dice + bce
+        return 1 - dice + cross_entropy
 
 
-class JaccardBCEWithLogitsLoss(nn.Module):
-    def __init__(self, pos_weight=None):
-        super(JaccardBCEWithLogitsLoss, self).__init__()
-        self.pos_weight = pos_weight
+class JaccardCrossEntropyLoss(nn.Module):
+    def __init__(self, weight=None):
+        super(JaccardCrossEntropyLoss, self).__init__()
+        self.weight = weight
 
     def forward(self, logits, labels, smooth=1):
-        logits = logits.view(-1)
         outputs = F.sigmoid(logits)
-        outputs = outputs.view(-1)
-        labels = labels.view(-1)
 
         intersection = (outputs * labels).sum()
         jaccard = (intersection + smooth) / ((outputs + labels).sum() - intersection + smooth)
 
-        pos_weight = self.pos_weight.to(logits.device)
-        bce = F.binary_cross_entropy_with_logits(logits, labels, pos_weight=pos_weight)
+        weight = self.weight.to(logits.device)
+        cross_entropy = F.cross_entropy(logits, labels, weight=weight)
 
-        return jaccard + bce
+        return jaccard + cross_entropy
