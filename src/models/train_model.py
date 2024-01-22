@@ -26,7 +26,7 @@ def get_trainer(config, wandb):
     os.makedirs(config['path']['models']['root'], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         save_top_k=1,
-        monitor='val/iou',
+        monitor='val/dice',
         mode='max',
         dirpath=config['path']['models']['root'],
         filename=f'{wandb.run.name}-{wandb.run.id}',
