@@ -81,7 +81,7 @@ class SegSubLightning(pl.LightningModule):
                     'mask_data': ground_truth,
                     'class_labels': class_labels
                 }
-            })}, sync_dist=True)
+            })})
 
     def on_validation_epoch_end(self):
         metrics = self.metrics.compute()
