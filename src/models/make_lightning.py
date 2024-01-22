@@ -101,34 +101,34 @@ class SegSubLightning(pl.LightningModule):
         return optimizer
 
     def configure_criterion(self):
-        pos_weight = self.get_pos_weight()
+        weight = self.get_weight()
 
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = nn.BCEWithLogitsLoss(pos_weight=weight)
         elif self.wandb.config.criterion == 'DiceLoss':
             criterion = losses.DiceLoss()
-        elif self.wandb.config.criterion == 'DiceBCEWithLogitsLoss':
-            criterion = losses.DiceCrossEntropyLoss(weight=pos_weight)
-        elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
-            criterion = losses.JaccardCrossEntropyLoss(pos_weight=pos_weight)
+        elif self.wandb.config.criterion == 'DiceCrossEntropyLoss':
+            criterion = losses.DiceCrossEntropyLoss(weight=weight)
+        elif self.wandb.config.criterion == 'JaccardCrossEntropyLoss':
+            criterion = losses.JaccardCrossEntropyLoss(weight=weight)
         else:
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
         return criterion
 
-    def get_pos_weight(self):
+    def get_weight(self):
         label_type = self.wandb.config.label_type
 
         if label_type == 'border':
-            pos_weight = torch.Tensor([15])
+            weight = torch.Tensor([15])
         elif label_type == 'layer':
-            pos_weight = torch.Tensor([1])
+            weight = torch.Tensor([1])
         elif label_type == 'semantic':
-            pos_weight = None
+            weight = None
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
 
-        return pos_weight
+        return weight
 
     def train_dataloader(self):
         args = {
