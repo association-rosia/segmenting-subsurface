@@ -47,7 +47,7 @@ class SegSubLightning(pl.LightningModule):
         return upsampled_logits
 
     def get_task(self):
-        task = 'binary' if self.wandb.config.num_labels == 1 else 'macro'
+        task = 'binary' if self.wandb.config.num_labels == 1 else 'multiclass'
 
         return task
 
