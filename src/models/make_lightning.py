@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
 
-import src.models.make_loss as ml
+import src.models.losses as losses
 import src.data.make_dataset as md
 import utils
 
@@ -102,11 +102,11 @@ class SegSubLightning(pl.LightningModule):
         if self.wandb.config.criterion == 'BCEWithLogitsLoss':
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         elif self.wandb.config.criterion == 'DiceLoss':
-            criterion = ml.DiceLoss()
+            criterion = losses.DiceLoss()
         elif self.wandb.config.criterion == 'DiceBCEWithLogitsLoss':
-            criterion = ml.DiceBCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = losses.DiceBCEWithLogitsLoss(pos_weight=pos_weight)
         elif self.wandb.config.criterion == 'JaccardBCEWithLogitsLoss':
-            criterion = ml.JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
+            criterion = losses.JaccardBCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
