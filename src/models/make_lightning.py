@@ -31,9 +31,8 @@ class SegSubLightning(pl.LightningModule):
 
         self.criterion = self.configure_criterion()
         self.metrics = tm.MetricCollection({
-            'val/dice': tm.Dice(),
-            'val/iou': tm.classification.BinaryJaccardIndex(),
-            'val/f1-score': tm.classification.BinaryF1Score()
+            'val/dice': tm.Dice(num_class=self.wandb.config.num_labels, esaverage='macro'),
+            'val/iou': tm.JaccardIndex(task=self.get_task(), num_classes=self.wandb.config.num_labels),
         })
 
     def forward(self, inputs):
@@ -46,6 +45,11 @@ class SegSubLightning(pl.LightningModule):
         upsampled_logits = upsampled_logits.squeeze(1)
 
         return upsampled_logits
+
+    def get_task(self):
+        task = 'binary' if self.wandb.config.num_labels == 1 else 'macro'
+
+        return task
 
     def training_step(self, batch):
         item, inputs = batch
