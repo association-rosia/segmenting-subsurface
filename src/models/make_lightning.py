@@ -74,14 +74,14 @@ class SegSubLightning(pl.LightningModule):
 
     def log_image(self, inputs, outputs):
         pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
-        outputs = outputs[0].numpy(force=True)
+        outputs = outputs[0].argmax(dim=0).numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
         class_labels = {0: 'Class 0', 1: 'Class 1'}
         self.wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
                 'predictions': {
-                    'mask_data': outputs.argmax(dim=0),
+                    'mask_data': outputs,
                     'class_labels': class_labels
                 },
                 'ground_truth': {
