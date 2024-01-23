@@ -6,6 +6,7 @@ sys.path.append(os.curdir)
 import wandb
 import torch
 import torch.nn.functional as tF
+import torchmetrics.functional as tmF
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -34,8 +35,12 @@ class SegSubLightning(pl.LightningModule):
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
         outputs = self.model(pixel_values=pixel_values)
+
         upsampled_logits = tF.interpolate(
-            outputs.logits, size=pixel_values.shape[-2:], mode='bilinear', align_corners=False
+            outputs.logits,
+            size=pixel_values.shape[-2:],
+            mode='bilinear',
+            align_corners=False
         )
 
         upsampled_logits = upsampled_logits.squeeze(1)
@@ -45,6 +50,7 @@ class SegSubLightning(pl.LightningModule):
     def training_step(self, batch):
         item, inputs = batch
         outputs = self.forward(inputs)
+        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
 
@@ -53,40 +59,60 @@ class SegSubLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
+        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
-        self.metrics.update(outputs.float(), inputs['labels'])
-
-        if batch_idx == 0:
-            self.log_image(inputs, outputs)
+        self.validation_log(batch_idx, outputs, inputs)
 
         return loss
-
-    def log_image(self, inputs, outputs):
-        pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
-        outputs = outputs[0].argmax(dim=0).numpy(force=True)
-        ground_truth = inputs['labels'][0].numpy(force=True)
-
-        self.wandb.log(
-            {'val/prediction': wandb.Image(pixel_values, masks={
-                'predictions': {
-                    'mask_data': outputs
-                },
-                'ground_truth': {
-                    'mask_data': ground_truth
-                }
-            })})
 
     def on_validation_epoch_end(self):
         metrics = self.metrics.compute()
         self.log_dict(metrics, on_epoch=True, sync_dist=True)
         self.metrics.reset()
 
+    def reorder(self, outputs, labels):
+        if self.wandb.config.label_reorder:
+            for b in range(outputs.shape[0]):
+                output = outputs[b]
+                label = labels[b].to(dtype=torch.int64)
+
+                similarities = torch.zeros((output.shape[0], label.shape[0]))
+
+                for c1 in range(label.shape[0]):
+                    for c2 in range(output.shape[0]):
+                        similarities[c1, c2] = tmF.dice(label[c1], output[c2])
+
+                indexes = []
+                for s in range(similarities.shape[0]):
+                    is_match = False
+                    similarity = similarities[s]
+
+                    while not is_match:
+                        argmax = similarity.argmax().item()
+                        is_match = similarities[:, argmax].max() == similarity.max()
+
+                        if is_match and argmax not in indexes:
+                            indexes.append(argmax)
+                        else:
+                            similarity[argmax] = -1
+                            is_match = False
+
+                outputs[b] = output[indexes, :, :]
+
+        return outputs
+
     def configure_optimizers(self):
         optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
 
         return optimizer
+
+    def validation_log(self, batch_idx, outputs, inputs):
+        outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
+        self.metrics.update(outputs.float(), inputs['labels'])
+
+        if batch_idx == 0:
+            self.log_image(inputs, outputs)
 
     def configure_criterion(self):
         class_weights = self.get_class_weights()
@@ -122,6 +148,21 @@ class SegSubLightning(pl.LightningModule):
             raise ValueError(f'Invalid num_labels: {num_labels}')
 
         return metrics
+
+    def log_image(self, inputs, outputs):
+        pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
+        outputs = outputs[0].argmax(dim=0).numpy(force=True)
+        ground_truth = inputs['labels'][0].numpy(force=True)
+
+        self.wandb.log(
+            {'val/prediction': wandb.Image(pixel_values, masks={
+                'predictions': {
+                    'mask_data': outputs
+                },
+                'ground_truth': {
+                    'mask_data': ground_truth
+                }
+            })})
 
     def get_class_weights(self):
         label_type = self.wandb.config.label_type

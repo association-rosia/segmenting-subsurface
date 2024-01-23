@@ -10,10 +10,12 @@ num_labels: 100
 num_channels: 3
 contrast_factor: 25
 
-dilation: 10
+dilation: 1
 val_size: 0.2
 dim: '0'
+
 label_type: 'semantic' # can be 'border', 'layer', 'semantic' or 'instance'
+label_reorder: true
 
 batch_size: 16
 num_workers: 23
