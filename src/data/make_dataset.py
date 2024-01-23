@@ -263,7 +263,7 @@ if __name__ == '__main__':
         shuffle=False
     )
 
-    # get_class_frequencies(train_dataloader)
+    get_class_frequencies(train_dataloader)
 
     for item, inputs in train_dataloader:
         break
