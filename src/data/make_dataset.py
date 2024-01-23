@@ -173,11 +173,13 @@ def get_training_volumes(config, wandb):
 
 def get_class_frequencies(train_dataloader):
     class_frequencies = {}
+    max_num_classes = 0
     count_all = 0
 
     for _, inputs in tqdm(train_dataloader):
         labels = inputs['labels']
         values, counts = labels.unique(return_counts=True)
+        max_num_classes = max(max_num_classes, len(values))
         count_all += counts.sum().item()
 
         for value, count in zip(values, counts):
@@ -196,7 +198,7 @@ def get_class_frequencies(train_dataloader):
     print('class_weights', class_weights)
     print('class_weights_list', class_weights_list)
     print('class_weights_proba', class_weights_proba)
-    print('num_labels', len(class_weights_proba))
+    print('num_labels', len(class_weights_proba), '/ max_num_classes', max_num_classes)
     pass
 
 
