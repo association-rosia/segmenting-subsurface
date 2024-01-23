@@ -195,10 +195,10 @@ def get_class_frequencies(train_dataloader):
     class_weights_list = [v for _, v in class_weights.items()]
     class_weights_proba = [el / sum(class_weights_list) for el in class_weights_list]
 
-    print('class_weights', class_weights)
-    print('class_weights_list', class_weights_list)
-    print('class_weights_proba', class_weights_proba)
-    print('num_labels', len(class_weights_proba), '/ max_num_classes', max_num_classes)
+    print('\nclass_weights', class_weights)
+    print('\nclass_weights_list', class_weights_list)
+    print('\nclass_weights_proba', class_weights_proba)
+    print('\nnum_labels', len(class_weights_proba), '/ max_num_classes', max_num_classes)
     pass
 
 
