@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 
 import make_lightning as ml
 import src.data.make_dataset as md
-import utils
+from src import utils
 
 torch.set_float32_matmul_precision('medium')
 

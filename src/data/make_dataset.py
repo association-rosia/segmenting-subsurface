@@ -11,10 +11,9 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import torch.nn.functional as F
-import torchvision.transforms.functional as FV
-
-import utils
+import torch.nn.functional as tF
+import torchvision.transforms.functional as tvF
+from src import utils
 
 
 class SegSubDataset(Dataset):
@@ -87,7 +86,7 @@ class SegSubDataset(Dataset):
         slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
         contrast_factor = self.wandb.config.contrast_factor
-        image = FV.adjust_contrast(image, contrast_factor=contrast_factor)
+        image = tvF.adjust_contrast(image, contrast_factor=contrast_factor)
 
         return image
 
@@ -106,15 +105,17 @@ class SegSubDataset(Dataset):
             label = self.get_layer_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
+        elif label_type == 'semantic':
+            label = label
         else:
-            pass  # label = label
+            raise ValueError(f'Unknown label_type: {label_type}')
 
         return label
 
     def get_border_label(self, label, kernel=3):
         label = label.view(1, 1, label.shape[0], label.shape[1]).float()
         pad_size = (kernel - 1) // 2
-        padded_label = F.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
+        padded_label = tF.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
         binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
         binary_label = 1 - binary_label.squeeze()
@@ -172,11 +173,13 @@ def get_training_volumes(config, wandb):
 
 def get_class_frequencies(train_dataloader):
     class_frequencies = {}
+    max_num_classes = 0
     count_all = 0
 
     for _, inputs in tqdm(train_dataloader):
         labels = inputs['labels']
         values, counts = labels.unique(return_counts=True)
+        max_num_classes = max(max_num_classes, len(values))
         count_all += counts.sum().item()
 
         for value, count in zip(values, counts):
@@ -188,9 +191,15 @@ def get_class_frequencies(train_dataloader):
             else:
                 class_frequencies[value] = count
 
-    print('class_frequencies', class_frequencies)
-    print('count_all', count_all)
-    print('class_weights', {k: 1 / (v / count_all) for k, v in class_frequencies.items()})
+    class_weights = {k: 1 / (v / count_all) for k, v in class_frequencies.items()}
+    class_weights_list = [v for _, v in class_weights.items()]
+    class_weights_proba = [el / sum(class_weights_list) for el in class_weights_list]
+
+    print('class_weights', class_weights)
+    print('class_weights_list', class_weights_list)
+    print('class_weights_proba', class_weights_proba)
+    print('num_labels', len(class_weights_proba), '/ max_num_classes', max_num_classes)
+    pass
 
 
 def compute_image_mean_std(config):
@@ -237,7 +246,7 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
-    import src.models.make_lightning as ml
+    import src.models.segformer.make_lightning as ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
@@ -257,11 +266,11 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=1,
+        batch_size=wandb.config.batch_size,
         shuffle=False
     )
 
-    # get_class_frequencies(train_dataloader)
+    get_class_frequencies(train_dataloader)
 
     for item, inputs in train_dataloader:
         break
