@@ -5,8 +5,7 @@ sys.path.append(os.curdir)
 
 import wandb
 import torch
-from torch import nn
-import torch.nn.functional as F
+import torch.nn.functional as tF
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -35,7 +34,7 @@ class SegSubLightning(pl.LightningModule):
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
         outputs = self.model(pixel_values=pixel_values)
-        upsampled_logits = nn.functional.interpolate(
+        upsampled_logits = tF.interpolate(
             outputs.logits, size=pixel_values.shape[-2:], mode='bilinear', align_corners=False
         )
 
@@ -56,7 +55,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
-        outputs = (F.sigmoid(outputs) > 0.5).type(torch.uint8)
+        outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
         self.metrics.update(outputs.float(), inputs['labels'])
 
         if batch_idx == 0:

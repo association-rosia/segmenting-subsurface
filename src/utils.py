@@ -16,7 +16,7 @@ def get_device():
 
 
 def get_config():
-    root = os.path.join('../config', 'config.yml')
+    root = os.path.join('config', 'config.yml')
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
 
@@ -27,7 +27,7 @@ def get_config():
 
 
 def init_wandb():
-    root = os.path.join('../config', 'wandb.yml')
+    root = os.path.join('config', 'wandb.yml')
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
 

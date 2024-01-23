@@ -11,8 +11,8 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import torch.nn.functional as F
-import torchvision.transforms.functional as FV
+import torch.nn.functional as tF
+import torchvision.transforms.functional as tvF
 from src import utils
 
 
@@ -86,7 +86,7 @@ class SegSubDataset(Dataset):
         slice = self.scale(slice)
         image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
         contrast_factor = self.wandb.config.contrast_factor
-        image = FV.adjust_contrast(image, contrast_factor=contrast_factor)
+        image = tvF.adjust_contrast(image, contrast_factor=contrast_factor)
 
         return image
 
@@ -115,7 +115,7 @@ class SegSubDataset(Dataset):
     def get_border_label(self, label, kernel=3):
         label = label.view(1, 1, label.shape[0], label.shape[1]).float()
         pad_size = (kernel - 1) // 2
-        padded_label = F.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
+        padded_label = tF.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
         binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
         binary_label = 1 - binary_label.squeeze()
@@ -191,12 +191,11 @@ def get_class_frequencies(train_dataloader):
 
     class_weights = {k: 1 / (v / count_all) for k, v in class_frequencies.items()}
     class_weights_list = [v for _, v in class_weights.items()]
-    class_weights_normalised = [(v - min(class_weights_list)) / (max(class_weights_list) - min(class_weights_list)) for
-                                v in class_weights_list]
+    class_weights_proba = [el / sum(class_weights_list) for el in class_weights_list]
 
-    print('class_frequencies', class_frequencies)
-    print('count_all', count_all)
     print('class_weights', class_weights)
+    print('class_weights_list', class_weights_list)
+    print('class_weights_proba', class_weights_proba)
     pass
 
 
