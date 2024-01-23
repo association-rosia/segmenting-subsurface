@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as F
 import torchvision.transforms.functional as FV
-
 import utils
 
 
@@ -190,9 +189,15 @@ def get_class_frequencies(train_dataloader):
             else:
                 class_frequencies[value] = count
 
+    class_weights = {k: 1 / (v / count_all) for k, v in class_frequencies.items()}
+    class_weights_list = [v for _, v in class_weights.items()]
+    class_weights_normalised = [(v - min(class_weights_list)) / (max(class_weights_list) - min(class_weights_list)) for
+                                v in class_weights_list]
+
     print('class_frequencies', class_frequencies)
     print('count_all', count_all)
-    print('class_weights', {k: 1 / (v / count_all) for k, v in class_frequencies.items()})
+    print('class_weights', class_weights)
+    pass
 
 
 def compute_image_mean_std(config):
@@ -259,7 +264,7 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=50,
+        batch_size=wandb.config.batch_size,
         shuffle=False
     )
 

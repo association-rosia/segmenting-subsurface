@@ -13,7 +13,7 @@ contrast_factor: 25
 dilation: 10
 val_size: 0.2
 dim: '0'
-label_type: 'instance'
+label_type: 'semantic'
 
 batch_size: 16
 num_workers: 23
