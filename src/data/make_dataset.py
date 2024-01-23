@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as F
 import torchvision.transforms.functional as FV
-import utils
+from src import utils
 
 
 class SegSubDataset(Dataset):
@@ -244,7 +244,7 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
-    import src.models.make_lightning as ml
+    import src.models.segformer.make_lightning as ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()

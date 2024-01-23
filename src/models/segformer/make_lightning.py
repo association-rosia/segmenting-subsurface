@@ -16,7 +16,7 @@ import torchmetrics as tm
 
 import src.models.losses as losses
 import src.data.make_dataset as md
-import utils
+from src import utils
 
 
 class SegSubLightning(pl.LightningModule):
@@ -30,10 +30,7 @@ class SegSubLightning(pl.LightningModule):
         self.val_volumes = args['val_volumes']
 
         self.criterion = self.configure_criterion()
-        self.metrics = tm.MetricCollection({
-            'val/dice': tm.Dice(num_classes=self.wandb.config.num_labels, average='macro'),
-            'val/iou': tm.JaccardIndex(task=self.get_task(), num_classes=self.wandb.config.num_labels),
-        })
+        self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
@@ -45,11 +42,6 @@ class SegSubLightning(pl.LightningModule):
         upsampled_logits = upsampled_logits.squeeze(1)
 
         return upsampled_logits
-
-    def get_task(self):
-        task = 'binary' if self.wandb.config.num_labels == 1 else 'multiclass'
-
-        return task
 
     def training_step(self, batch):
         item, inputs = batch
@@ -98,34 +90,55 @@ class SegSubLightning(pl.LightningModule):
         return optimizer
 
     def configure_criterion(self):
-        weight = self.get_weight()
+        class_weights = self.get_class_weights()
+        num_labels = self.wandb.config.num_labels
 
         if self.wandb.config.criterion == 'CrossEntropyLoss':
-            criterion = nn.CrossEntropyLoss(weight=weight)
+            criterion = losses.CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         elif self.wandb.config.criterion == 'DiceLoss':
-            criterion = losses.DiceLoss()
+            criterion = losses.DiceLoss(num_labels=num_labels)
         elif self.wandb.config.criterion == 'DiceCrossEntropyLoss':
-            criterion = losses.DiceCrossEntropyLoss(weight=weight)
+            criterion = losses.DiceCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         elif self.wandb.config.criterion == 'JaccardCrossEntropyLoss':
-            criterion = losses.JaccardCrossEntropyLoss(weight=weight)
+            criterion = losses.JaccardCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         else:
             raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
 
         return criterion
 
-    def get_weight(self):
+    def configure_metrics(self):
+        num_labels = self.wandb.config.num_labels
+
+        if num_labels == 1:
+            metrics = tm.MetricCollection({
+                'val/dice': tm.Dice(),
+                'val/iou': tm.classification.BinaryJaccardIndex()
+            })
+        elif num_labels > 1:
+            metrics = tm.MetricCollection({
+                'val/dice': tm.Dice(num_classes=num_labels, average='macro'),
+                'val/iou': tm.JaccardIndex(task='multiclass', num_classes=num_labels),
+            })
+        else:
+            raise ValueError(f'Invalid num_labels: {num_labels}')
+
+        return metrics
+
+    def get_class_weights(self):
         label_type = self.wandb.config.label_type
 
         if label_type == 'border':
-            weight = torch.Tensor([15])
+            class_weights = torch.Tensor([15])
         elif label_type == 'layer':
-            weight = torch.Tensor([1])
+            class_weights = None
         elif label_type == 'semantic':
-            weight = None
+            class_weights = None
+        elif label_type == 'instance':
+            class_weights = None
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
 
-        return weight
+        return class_weights
 
     def train_dataloader(self):
         args = {
@@ -151,7 +164,7 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb': self.wandb,
             'processor': self.processor,
-            'volumes': self.val_volumes,
+            'volumes': self.val_volumes
         }
 
         dataset_val = md.SegSubDataset(args)

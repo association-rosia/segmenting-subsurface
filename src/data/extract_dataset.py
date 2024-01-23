@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.curdir)
 
-import utils
+from src import utils
 import zipfile
 from tqdm import tqdm
 
