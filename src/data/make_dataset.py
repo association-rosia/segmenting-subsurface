@@ -196,6 +196,7 @@ def get_class_frequencies(train_dataloader):
     print('class_weights', class_weights)
     print('class_weights_list', class_weights_list)
     print('class_weights_proba', class_weights_proba)
+    print('num_labels', len(class_weights_proba))
     pass
 
 
