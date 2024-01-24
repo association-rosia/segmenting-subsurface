@@ -74,11 +74,11 @@ class SegSubLightning(pl.LightningModule):
 
     def reorder(self, outputs, labels):
 
-        def dice(label, output):
-            label = torch.from_numpy(label).to(dtype=torch.int64)
-            label = torch.from_numpy(output).to(dtype=torch.int64)
+        def dice(labels, outputs):
+            labels = torch.from_numpy(labels).to(dtype=torch.int64)
+            outputs = torch.from_numpy(outputs).to(dtype=torch.int64)
 
-            return tmF.dice(label, output)
+            return tmF.dice(labels, outputs)
 
         if self.wandb.config.label_reorder:
             outputs = self.logits_to_labels(outputs)
