@@ -82,15 +82,10 @@ class SegSubLightning(pl.LightningModule):
                 label = labels[b].to(dtype=torch.int64)
                 label = torch.permute(tF.one_hot(label, num_classes=num_classes), (2, 0, 1))
 
-                print(output.shape)
-                print(output.unique())
-                print(label.shape)
-                print(label.unique())
-
                 similarities = torch.zeros((output.shape[0], label.shape[0]))
-
                 for c1 in range(label.shape[0]):
                     for c2 in range(output.shape[0]):
+                        print(c1, c2)
                         similarities[c1, c2] = tmF.dice(label[c1], output[c2])
 
                 indexes = []
