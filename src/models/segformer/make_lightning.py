@@ -91,15 +91,20 @@ class SegSubLightning(pl.LightningModule):
                 flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
 
                 distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
+                print(distances)
                 labels_indexes = [i for i, v in enumerate(flatten_label.sum(dim=1).tolist()) if v != 0]
+                print(labels_indexes)
 
                 indexes_reordered = []
                 for index in labels_indexes:
+                    print('index', index)
                     is_matched = False
                     distance = distances[index]
+                    print('distance', distance)
 
                     while not is_matched:
                         distance_argmax = distance.argmax().item()
+                        print('distance_argmax', distance_argmax)
                         max_row = distance.max().item()
                         max_col = distances[:, distance_argmax].max().item()
                         is_empty = flatten_output[distance_argmax].sum().item() == 0
@@ -109,7 +114,7 @@ class SegSubLightning(pl.LightningModule):
                             indexes_reordered.append(distance_argmax)
                         else:
                             is_matched = False
-                            distances[distance_argmax] = 0
+                            distances[distance_argmax] = -1
 
                 indexes_reordered += [i for i in range(num_classes) if i not in indexes_reordered]
                 outputs[b] = output[indexes_reordered]
