@@ -13,6 +13,7 @@ import pytorch_lightning as pl
 
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
+import numpy as np
 
 import src.models.losses as losses
 import src.data.make_dataset as md
@@ -174,7 +175,7 @@ class SegSubLightning(pl.LightningModule):
         ground_truth = inputs['labels'][0].numpy(force=True)
 
         print(inputs['pixel_values'].shape, outputs.shape, inputs['labels'].shape)
-        print(outputs.unique(), inputs['labels'].unique())
+        print(np.unique(outputs), np.unique(inputs['labels']))
 
         self.wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
