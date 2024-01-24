@@ -77,9 +77,9 @@ class SegSubLightning(pl.LightningModule):
 
             for b in range(outputs.shape[0]):
                 num_classes = self.wandb.config.num_labels
-                output = outputs[b]
+                output = outputs[b].to(dtype=torch.int64)
                 output = torch.permute(tF.one_hot(output, num_classes=num_classes), (2, 0, 1))
-                label = labels[b]  # .to(dtype=torch.int64)
+                label = labels[b].to(dtype=torch.int64)
                 label = torch.permute(tF.one_hot(label, num_classes=num_classes), (2, 0, 1))
 
                 print(output.shape)
