@@ -115,12 +115,16 @@ class SegSubLightning(pl.LightningModule):
     def logits_to_labels(self, outputs):
         num_labels = self.wandb.config.num_labels
 
+        print(outputs.shape)
+
         if num_labels == 1:
             outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
         elif num_labels > 1:
             outputs = (tF.sigmoid(outputs).argmax(dim=1)).type(torch.uint8)
         else:
             raise ValueError(f'Invalid num_labels: {self.num_labels}')
+
+        print(outputs.shape)
 
         return outputs
 
