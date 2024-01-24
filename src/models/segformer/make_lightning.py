@@ -83,8 +83,8 @@ class SegSubLightning(pl.LightningModule):
 
                 for c1 in range(label.shape[0]):
                     for c2 in range(output.shape[0]):
-                        print(output[c2].shape)
-                        print(label[c1].shape)
+                        print(label[c1].dtype)
+                        print(output[c2].dtype)
                         similarities[c1, c2] = tmF.dice(label[c1], output[c2])
 
                 indexes = []
