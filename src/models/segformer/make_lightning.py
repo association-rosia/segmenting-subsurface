@@ -75,21 +75,22 @@ class SegSubLightning(pl.LightningModule):
         if self.wandb.config.label_reorder:
             outputs = self.logits_to_labels(outputs)
 
-            print(outputs.shape)
-            print(outputs.unique())
-
             for b in range(outputs.shape[0]):
-                output = outputs[b]
-                label = labels[b]  # .to(dtype=torch.int64)
                 num_classes = self.wandb.config.num_labels
+                output = outputs[b]
+                output = torch.permute(tF.one_hot(output, num_classes=num_classes), (2, 0, 1))
+                label = labels[b]  # .to(dtype=torch.int64)
                 label = torch.permute(tF.one_hot(label, num_classes=num_classes), (2, 0, 1))
+
+                print(output.shape)
+                print(output.unique())
+                print(label.shape)
+                print(label.unique())
 
                 similarities = torch.zeros((output.shape[0], label.shape[0]))
 
                 for c1 in range(label.shape[0]):
                     for c2 in range(output.shape[0]):
-                        print(label[c1].dtype)
-                        print(output[c2].dtype)
                         similarities[c1, c2] = tmF.dice(label[c1], output[c2])
 
                 indexes = []
