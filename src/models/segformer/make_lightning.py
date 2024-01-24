@@ -114,7 +114,7 @@ class SegSubLightning(pl.LightningModule):
                             indexes_reordered.append(distance_argmax)
                         else:
                             is_matched = False
-                            distances[distance_argmax] = -1
+                            distance[distance_argmax] = -1
 
                 indexes_reordered += [i for i in range(num_classes) if i not in indexes_reordered]
                 outputs[b] = output[indexes_reordered]
