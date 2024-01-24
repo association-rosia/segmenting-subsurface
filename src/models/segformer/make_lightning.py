@@ -90,7 +90,7 @@ class SegSubLightning(pl.LightningModule):
                 output = torch.permute(tF.one_hot(outputs[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
                 flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
 
-                distances = torch.from_numpy(pairwise_distances(label.cpu(), output.cpu(), metric=dice))
+                distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
                 labels_indexes = [i for i, v in enumerate(flatten_label.sum(dim=1).tolist()) if v != 0]
 
                 indexes_reordered = []
