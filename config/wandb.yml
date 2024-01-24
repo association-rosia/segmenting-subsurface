@@ -15,7 +15,7 @@ val_size: 0.2
 dim: '0'
 
 label_type: 'semantic' # can be 'border', 'layer', 'semantic' or 'instance'
-label_reorder: true
+label_reorder: false
 
 batch_size: 16
 num_workers: 23
