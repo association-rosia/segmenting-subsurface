@@ -13,6 +13,7 @@ import pytorch_lightning as pl
 
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
+from sklearn.metrics import pairwise_distances
 
 import src.models.losses as losses
 import src.data.make_dataset as md
@@ -72,38 +73,46 @@ class SegSubLightning(pl.LightningModule):
         self.metrics.reset()
 
     def reorder(self, outputs, labels):
+
+        def dice(label, output):
+            label = torch.from_numpy(label).to(dtype=torch.int64)
+            label = torch.from_numpy(output).to(dtype=torch.int64)
+
+            return tmF.dice(label, output)
+
         if self.wandb.config.label_reorder:
             outputs = self.logits_to_labels(outputs)
 
             for b in range(outputs.shape[0]):
                 num_classes = self.wandb.config.num_labels
-                output = outputs[b].to(dtype=torch.int64)
-                output = torch.permute(tF.one_hot(output, num_classes=num_classes), (2, 0, 1))
-                label = labels[b].to(dtype=torch.int64)
-                label = torch.permute(tF.one_hot(label, num_classes=num_classes), (2, 0, 1))
+                label = torch.permute(tF.one_hot(labels[b], num_classes=num_classes), (2, 0, 1))
+                flatten_label = torch.flatten(label, start_dim=1, end_dim=2)
+                output = torch.permute(tF.one_hot(outputs[b], num_classes=num_classes), (2, 0, 1))
+                flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
 
-                similarities = torch.zeros((output.shape[0], label.shape[0]))
-                for c1 in range(label.shape[0]):
-                    for c2 in range(output.shape[0]):
-                        similarities[c1, c2] = tmF.dice(label[c1], output[c2])
-                        print(c1, c2, similarities[c1, c2])
+                distances = torch.from_numpy(pairwise_distances(label, output, metric=dice))
+                labels_indexes = [i for i, v in enumerate(flatten_label.sum(dim=1).tolist()) if v != 0]
 
-                indexes = []
-                for s in range(similarities.shape[0]):
-                    is_match = False
-                    similarity = similarities[s]
+                indexes_reordered = []
+                for index in labels_indexes:
+                    is_matched = False
+                    distance = distances[index]
 
-                    while not is_match:
-                        argmax = similarity.argmax().item()
-                        is_match = similarities[:, argmax].max() == similarity.max()
+                    while not is_matched:
+                        distance_argmax = distance.argmax().item()
+                        max_row = distance.max().item()
+                        max_col = distances[:, distance_argmax].max().item()
+                        is_empty = flatten_output[distance_argmax].sum().item() == 0
 
-                        if is_match and argmax not in indexes:
-                            indexes.append(argmax)
+                        if (max_row == max_col or is_empty) and distance_argmax not in indexes_reordered:
+                            is_matched = True
+                            indexes_reordered.append(distance_argmax)
                         else:
-                            similarity[argmax] = -1
-                            is_match = False
+                            is_matched = False
+                            distances[distance_argmax] = 0
 
-                outputs[b] = output[indexes, :, :]
+                indexes_reordered += [i for i in range(num_classes) if i not in indexes_reordered]
+                outputs[b] = output[indexes_reordered]
 
         return outputs
 

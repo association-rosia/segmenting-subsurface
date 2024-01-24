@@ -166,7 +166,8 @@ def get_volumes(config, set):
 
 def get_training_volumes(config, wandb):
     training_volumes = get_volumes(config, set='training')
-    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb.config.val_size)
+    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb.config.val_size,
+                                                  random_state=wandb.config.random_state)
 
     return train_volumes, val_volumes
 
