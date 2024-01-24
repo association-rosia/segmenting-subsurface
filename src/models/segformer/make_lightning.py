@@ -126,7 +126,7 @@ class SegSubLightning(pl.LightningModule):
 
     def validation_log(self, batch_idx, outputs, inputs):
         outputs = self.logits_to_labels(outputs)
-        self.metrics.update(outputs.float(), inputs['labels'])
+        self.metrics.update(outputs, inputs['labels'])
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
