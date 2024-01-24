@@ -75,6 +75,9 @@ class SegSubLightning(pl.LightningModule):
         if self.wandb.config.label_reorder:
             outputs = self.logits_to_labels(outputs)
 
+            print(outputs.shape)
+            print(outputs.unique())
+
             for b in range(outputs.shape[0]):
                 output = outputs[b]
                 label = labels[b]  # .to(dtype=torch.int64)
