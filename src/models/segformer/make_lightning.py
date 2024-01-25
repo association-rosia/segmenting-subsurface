@@ -84,6 +84,7 @@ class SegSubLightning(pl.LightningModule):
             outputs = self.logits_to_labels(outputs)
 
             for b in range(outputs.shape[0]):
+                print(b)
                 num_classes = self.wandb.config.num_labels
                 label = torch.permute(tF.one_hot(labels[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
                 flatten_label = torch.flatten(label, start_dim=1, end_dim=2)
@@ -112,6 +113,7 @@ class SegSubLightning(pl.LightningModule):
                             distance[distance_argmax] = -1
 
                 indexes_reordered += [i for i in range(num_classes) if i not in indexes_reordered]
+                print(indexes_reordered)
                 outputs[b] = output[indexes_reordered].argmax(dim=0)
 
         return outputs
