@@ -184,8 +184,6 @@ class SegSubDataset(Dataset):
 
 
 def sam_collate_fn(batch):
-    print(batch)
-
     items = [el[0] for el in batch]
     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
     labels = [el[1]['labels'] for el in batch]
