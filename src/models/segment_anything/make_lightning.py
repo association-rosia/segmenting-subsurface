@@ -159,7 +159,7 @@ class SegSubLightning(pl.LightningModule):
     def train_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
             'volumes': self.train_volumes
         }
@@ -178,7 +178,7 @@ class SegSubLightning(pl.LightningModule):
     def val_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
             'volumes': self.val_volumes
         }
