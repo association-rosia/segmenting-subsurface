@@ -105,6 +105,8 @@ class SegSubLightning(pl.LightningModule):
                         max_col = distances[:, distance_argmax].max().item()
                         is_empty = flatten_output[distance_argmax].sum().item() == 0
 
+                        print('distance_argmax', distance_argmax)
+
                         if (max_row == max_col or is_empty) and distance_argmax not in indexes_reordered:
                             is_matched = True
                             indexes_reordered.append(distance_argmax)
