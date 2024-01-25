@@ -13,7 +13,6 @@ import pytorch_lightning as pl
 
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 import torchmetrics as tm
-from sklearn.metrics import pairwise_distances
 
 import src.models.losses as losses
 import src.data.make_dataset as md
@@ -87,12 +86,19 @@ class SegSubLightning(pl.LightningModule):
                 print(b)
                 num_classes = self.wandb.config.num_labels
                 label = torch.permute(tF.one_hot(labels[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
-                flatten_label = torch.flatten(label, start_dim=1, end_dim=2)
+                # flatten_label = torch.flatten(label, start_dim=1, end_dim=2)
                 output = torch.permute(tF.one_hot(outputs[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
-                flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
+                # flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
 
-                distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
-                labels_indexes = [i for i, v in enumerate(flatten_label.sum(dim=1).tolist()) if v != 0]
+                # distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
+
+                distances = torch.zeros((outputs.shape[0], labels.shape[0]))
+                for c1 in range(labels.shape[0]):
+                    for c2 in range(outputs.shape[0]):
+                        dice = tmF.dice(labels[c1], outputs[c2])
+                        distances[c1, c2] = dice
+
+                labels_indexes = [i for i, v in enumerate(label.sum(dim=1).tolist()) if v != 0]
 
                 indexes_reordered = []
                 for index in labels_indexes:
@@ -103,7 +109,7 @@ class SegSubLightning(pl.LightningModule):
                         distance_argmax = distance.argmax().item()
                         max_row = distance.max().item()
                         max_col = distances[:, distance_argmax].max().item()
-                        is_empty = flatten_output[distance_argmax].sum().item() == 0
+                        is_empty = label[distance_argmax].sum().item() == 0
 
                         print('distance_argmax', distance_argmax)
 
