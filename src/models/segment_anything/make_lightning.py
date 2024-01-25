@@ -42,6 +42,10 @@ class SegSubLightning(pl.LightningModule):
 
     def training_step(self, batch):
         item, inputs = batch
+
+        print(item)
+        print(inputs)
+
         outputs = self.forward(inputs)
         outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
