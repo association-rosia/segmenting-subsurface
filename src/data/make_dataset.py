@@ -183,6 +183,15 @@ class SegSubDataset(Dataset):
         plt.show()
 
 
+def sam_collate_fn(batch):
+    items = [el[0] for el in batch]
+    pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+    labels = [el[1]['labels'] for el in batch]
+    input_points = [el[1]['input_points'] for el in batch]
+
+    return items, {'pixel_values': pixel_values, 'labels': labels, 'input_points': input_points}
+
+
 def get_volumes(config, set):
     root_test = config['path']['data']['raw']['test']
     root_train = config['path']['data']['raw']['train']
@@ -306,7 +315,8 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(
         dataset=train_dataset,
         batch_size=wandb_config['batch_size'],
-        shuffle=False
+        shuffle=False,
+        collate_fn=sam_collate_fn
     )
 
     # get_class_frequencies(train_dataloader)
