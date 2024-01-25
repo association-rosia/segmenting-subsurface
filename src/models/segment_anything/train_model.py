@@ -15,7 +15,7 @@ torch.set_float32_matmul_precision('medium')
 
 def main():
     config = utils.get_config()
-    wandb = utils.init_wandb('segformer.yml')
+    wandb, wandb_config = utils.init_wandb('sam.yml')
     trainer = get_trainer(config, wandb)
     lightning = get_lightning(config, wandb)
     trainer.fit(model=lightning)

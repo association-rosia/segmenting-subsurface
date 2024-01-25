@@ -5,6 +5,7 @@ sys.path.append(os.curdir)
 
 from glob import glob
 import torch
+import random
 import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -20,7 +21,7 @@ class SegSubDataset(Dataset):
     def __init__(self, args):
         super(SegSubDataset, self).__init__()
         self.config = args['config']
-        self.wandb = args['wandb']
+        self.wandb_config = args['wandb_config']
         self.processor = args['processor']
         self.volumes = args['volumes']
         self.slices = self.get_slices()
@@ -42,13 +43,39 @@ class SegSubDataset(Dataset):
         )
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-        inputs['labels'] = self.process_label(inputs['labels'])
+
+        if 'labels' in inputs:
+            inputs['labels'] = self.process_label(inputs['labels'])
+        else:
+            inputs = self.create_sam_inputs(inputs, label)
 
         return item, inputs
 
+    def create_sam_inputs(self, inputs, label):
+        inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
+        inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+
+        input_points = torch.zeros(inputs['labels'].shape)
+        input_points[:, ::4, ::4] = 1
+        input_points = input_points * inputs['labels'].int().float()
+
+        input_points_list = []
+        min_input_points = 1000
+        for i in range(input_points.shape[0]):
+            argwhere = torch.argwhere(input_points[i]).tolist()
+            input_points_list.append(argwhere)
+            min_input_points = min(min_input_points, len(argwhere))
+
+        for i in range(len(input_points_list)):
+            input_points_list[i] = random.choices(input_points_list[i], k=min_input_points)
+
+        inputs['input_points'] = torch.tensor(input_points_list)
+
+        return inputs
+
     def get_slices(self):
-        dims = self.wandb.config.dim.split(',')
-        dilation = self.wandb.config.dilation
+        dims = self.wandb_config['dim'].split(',')
+        dilation = self.wandb_config['dilation']
         slices = []
 
         for volume in self.volumes:
@@ -84,8 +111,8 @@ class SegSubDataset(Dataset):
     def get_image(self, item):
         slice = self.get_slice(item, dtype=torch.float32)
         slice = self.scale(slice)
-        image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
-        contrast_factor = self.wandb.config.contrast_factor
+        image = torch.stack([slice for _ in range(self.wandb_config['num_channels'])])
+        contrast_factor = self.wandb_config['contrast_factor']
         image = tvF.adjust_contrast(image, contrast_factor=contrast_factor)
 
         return image
@@ -97,7 +124,7 @@ class SegSubDataset(Dataset):
         return label
 
     def process_label(self, label):
-        label_type = self.wandb.config.label_type
+        label_type = self.wandb_config['label_type']
 
         if label_type == 'border':
             label = self.get_border_label(label)
@@ -105,10 +132,19 @@ class SegSubDataset(Dataset):
             label = self.get_layer_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
+        elif label_type == 'one_hot':
+            label = self.get_one_hot_label(label)
         elif label_type == 'semantic':
             label = label
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
+
+        return label
+
+    def get_one_hot_label(self, label):
+        indexes = torch.unique(label)
+        label = torch.permute(tF.one_hot(label.to(torch.int64)), (2, 0, 1))
+        label = label[indexes.tolist()]
 
         return label
 
@@ -164,10 +200,10 @@ def get_volumes(config, set):
     return volumes
 
 
-def get_training_volumes(config, wandb):
+def get_training_volumes(config, wandb_config):
     training_volumes = get_volumes(config, set='training')
-    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb.config.val_size,
-                                                  random_state=wandb.config.random_state)
+    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb_config['val_size'],
+                                                  random_state=wandb_config['random_state'])
 
     return train_volumes, val_volumes
 
@@ -247,19 +283,21 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
-    import src.models.segformer.make_lightning as ml
+    import src.models.segment_anything.make_lightning as sam_ml
+    # import src.models.segformer.make_lightning as seg_ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
     # compute_image_mean_std(config)
-    wandb = utils.init_wandb()
+    wandb_config = utils.init_wandb('segment_anything.yml')
 
-    processor, model = ml.get_processor_model(config, wandb)
+    model = sam_ml.get_model(wandb_config)
+    processor = utils.get_processor(config, wandb_config)
     train_volumes = get_volumes(config, set='train')
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb_config,
         'processor': processor,
         'volumes': train_volumes,
     }
@@ -267,11 +305,11 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=wandb.config.batch_size,
+        batch_size=wandb_config['batch_size'],
         shuffle=False
     )
 
-    get_class_frequencies(train_dataloader)
+    # get_class_frequencies(train_dataloader)
 
     for item, inputs in train_dataloader:
         break

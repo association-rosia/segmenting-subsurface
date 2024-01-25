@@ -10,7 +10,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
-from transformers import SegformerForSemanticSegmentation
+from transformers import SamModel
 import torchmetrics as tm
 
 import src.models.losses as losses
@@ -22,7 +22,7 @@ class SegSubLightning(pl.LightningModule):
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
         self.config = args['config']
-        self.wandb = args['wandb']
+        self.wandb_config = args['wandb_config']
         self.model = args['model']
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
@@ -33,18 +33,12 @@ class SegSubLightning(pl.LightningModule):
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
-        outputs = self.model(pixel_values=pixel_values)
+        input_points = inputs['input_points']
+        outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
 
-        upsampled_logits = tF.interpolate(
-            outputs.logits,
-            size=pixel_values.shape[-2:],
-            mode='bilinear',
-            align_corners=False
-        )
+        print(outputs.shape)
 
-        upsampled_logits = upsampled_logits.squeeze(1)
-
-        return upsampled_logits
+        return outputs
 
     def training_step(self, batch):
         item, inputs = batch
@@ -182,7 +176,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
-        self.wandb.log(
+        wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
                 'predictions': {
                     'mask_data': outputs
@@ -193,7 +187,7 @@ class SegSubLightning(pl.LightningModule):
             })})
 
     def get_class_weights(self):
-        label_type = self.wandb.config.label_type
+        label_type = self.wandb_config['label_type']
 
         if label_type == 'border':
             class_weights = torch.Tensor([15])
@@ -248,20 +242,18 @@ class SegSubLightning(pl.LightningModule):
 
 
 def get_model(wandb_config):
-    model = SegformerForSemanticSegmentation.from_pretrained(
+    model = SamModel.from_pretrained(
         pretrained_model_name_or_path=wandb_config.model_id,
-        num_labels=wandb_config.num_labels,
-        num_channels=wandb_config.num_channels,
         ignore_mismatched_sizes=True
     )
 
-    return processor, model
+    return model
 
 
 if __name__ == '__main__':
     config = utils.get_config()
-    wandb_config = utils.init_wandb('segformer.yml')
-    processor, model = get_model(wandb_config)
+    wandb = utils.init_wandb('segment_anything.yml')
+    processor, model = get_processor_model(config, wandb)
     train_volumes, val_volumes = md.get_training_volumes(config, wandb)
 
     args = {
