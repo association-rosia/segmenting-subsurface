@@ -92,10 +92,10 @@ class SegSubLightning(pl.LightningModule):
 
                 # distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
 
-                distances = torch.zeros((outputs.shape[0], labels.shape[0]))
-                for c1 in range(labels.shape[0]):
-                    for c2 in range(outputs.shape[0]):
-                        dice = tmF.dice(labels[c1], outputs[c2])
+                distances = torch.zeros((output.shape[0], label.shape[0]))
+                for c1 in range(label.shape[0]):
+                    for c2 in range(output.shape[0]):
+                        dice = tmF.dice(label[c1], output[c2])
                         distances[c1, c2] = dice
 
                 labels_indexes = [i for i, v in enumerate(label.sum(dim=1).tolist()) if v != 0]
