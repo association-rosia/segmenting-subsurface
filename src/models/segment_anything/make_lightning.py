@@ -147,6 +147,8 @@ class SegSubLightning(pl.LightningModule):
             class_weights = None
         elif label_type == 'semantic':
             class_weights = None
+        elif label_type == 'one_hot':
+            class_weights = None
         elif label_type == 'instance':
             class_weights = None
         else:
