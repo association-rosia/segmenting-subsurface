@@ -44,11 +44,10 @@ class SegSubDataset(Dataset):
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
-        print(inputs.keys())
-        if 'labels' in inputs:
-            inputs['labels'] = self.process_label(inputs['labels'])
-        else:
+        if 'reshaped_input_sizes' in inputs:
             inputs = self.create_sam_inputs(inputs, label)
+        else:
+            inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
 
