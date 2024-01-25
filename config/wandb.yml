@@ -5,7 +5,7 @@ max_epochs: 100
 criterion: 'DiceCrossEntropyLoss'
 
 #model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
-model_id: 'nvidia/segformer-b3-finetuned-ade-512-512'
+model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
 num_labels: 1
 num_channels: 3
 contrast_factor: 25
@@ -20,4 +20,4 @@ label_reorder: false
 batch_size: 16
 num_workers: 23
 
-lr: 0.00015
+lr: 0.0001
