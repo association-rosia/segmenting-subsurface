@@ -17,6 +17,6 @@ label_type: 'one_hot' # can be 'border', 'layer', 'semantic' 'one_hot' or 'insta
 num_input_points: 20
 
 batch_size: 16
-num_workers: 0 # 23
+num_workers: 23
 
 lr: 0.0001
