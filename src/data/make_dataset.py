@@ -54,22 +54,10 @@ class SegSubDataset(Dataset):
     def create_sam_inputs(self, inputs, label):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
         inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
-
-        input_points = torch.zeros(inputs['labels'].shape)
-        input_points[:, ::4, ::4] = 1
-        input_points = input_points * inputs['labels'].int().float()
-
-        input_points_list = []
-        min_input_points = 1000
-        for i in range(input_points.shape[0]):
-            argwhere = torch.argwhere(input_points[i]).tolist()
-            input_points_list.append(argwhere)
-            min_input_points = min(min_input_points, len(argwhere))
-
-        for i in range(len(input_points_list)):
-            input_points_list[i] = random.choices(input_points_list[i], k=min_input_points)
-
-        inputs['input_points'] = torch.tensor(input_points_list)
+        inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+        input_points_coord = torch.argwhere(inputs['labels']).tolist()
+        input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+        inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
 
         return inputs
 
@@ -183,13 +171,13 @@ class SegSubDataset(Dataset):
         plt.show()
 
 
-def sam_collate_fn(batch):
-    items = [el[0] for el in batch]
-    pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
-    labels = [el[1]['labels'] for el in batch]
-    input_points = [el[1]['input_points'] for el in batch]
-
-    return items, {'pixel_values': pixel_values, 'labels': labels, 'input_points': input_points}
+# def sam_collate_fn(batch):
+#     items = [el[0] for el in batch]
+#     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+#     labels = [el[1]['labels'] for el in batch]
+#     input_points = [el[1]['input_points'] for el in batch]
+#
+#     return items, {'pixel_values': pixel_values, 'labels': labels, 'input_points': input_points}
 
 
 def get_volumes(config, set):
@@ -315,8 +303,7 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(
         dataset=train_dataset,
         batch_size=wandb_config['batch_size'],
-        shuffle=False,
-        collate_fn=sam_collate_fn
+        shuffle=False
     )
 
     # get_class_frequencies(train_dataloader)

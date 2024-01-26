@@ -41,7 +41,8 @@ def get_trainer(config, wandb_config):
             max_epochs=3,
             logger=pl.loggers.WandbLogger(),
             callbacks=[checkpoint_callback],
-            devices=1,
+            accelerator='cpu',
+            # devices=1,
             precision='16-mixed',
             limit_train_batches=5,
             limit_val_batches=5

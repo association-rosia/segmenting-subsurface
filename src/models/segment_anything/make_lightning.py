@@ -170,7 +170,6 @@ class SegSubLightning(pl.LightningModule):
             dataset=dataset_train,
             batch_size=self.wandb_config['batch_size'],
             num_workers=self.wandb_config['num_workers'],
-            collate_fn=md.sam_collate_fn,
             shuffle=True,
             drop_last=True,
             pin_memory=True
@@ -190,7 +189,6 @@ class SegSubLightning(pl.LightningModule):
             dataset=dataset_val,
             batch_size=self.wandb_config['batch_size'],
             num_workers=self.wandb_config['num_workers'],
-            collate_fn=md.sam_collate_fn,
             shuffle=False,
             drop_last=True,
             pin_memory=True
