@@ -16,7 +16,7 @@ dim: '0'
 label_type: 'one_hot' # can be 'border', 'layer', 'semantic' 'one_hot' or 'instance'
 num_input_points: 20
 
-batch_size: 16
+batch_size: 8
 num_workers: 23
 
 lr: 0.0001
