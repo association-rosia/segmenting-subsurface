@@ -35,15 +35,15 @@ class SegSubLightning(pl.LightningModule):
         pixel_values = inputs['pixel_values']
         input_points = inputs['input_points']
         outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
+        outputs = outputs['pred_masks']
 
-        print(outputs)
+        print(outputs.shape)
 
         return outputs
 
     def training_step(self, batch):
         item, inputs = batch
         outputs = self.forward(inputs)
-        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
 
@@ -52,7 +52,6 @@ class SegSubLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
-        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
         self.validation_log(batch_idx, outputs, inputs)

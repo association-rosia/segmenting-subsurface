@@ -49,7 +49,6 @@ class SegSubLightning(pl.LightningModule):
     def training_step(self, batch):
         item, inputs = batch
         outputs = self.forward(inputs)
-        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
 
@@ -58,7 +57,6 @@ class SegSubLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         item, inputs = batch
         outputs = self.forward(inputs)
-        outputs = self.reorder(outputs, inputs['labels'])
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
         self.validation_log(batch_idx, outputs, inputs)
@@ -69,54 +67,6 @@ class SegSubLightning(pl.LightningModule):
         metrics = self.metrics.compute()
         self.log_dict(metrics, on_epoch=True, sync_dist=True)
         self.metrics.reset()
-
-    # def reorder(self, outputs, labels):
-    #
-    #     def dice(labels, outputs):
-    #         labels = torch.from_numpy(labels).to(dtype=torch.int64)
-    #         outputs = torch.from_numpy(outputs).to(dtype=torch.int64)
-    #
-    #         return tmF.dice(labels, outputs)
-    #
-    #     if self.wandb.config.label_reorder:
-    #         outputs = self.logits_to_labels(outputs)
-    #
-    #         for b in range(outputs.shape[0]):
-    #             print(b)
-    #             num_classes = self.wandb.config.num_labels
-    #             label = torch.permute(tF.one_hot(labels[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
-    #             flatten_label = torch.flatten(label, start_dim=1, end_dim=2)
-    #             output = torch.permute(tF.one_hot(outputs[b].to(torch.int64), num_classes=num_classes), (2, 0, 1))
-    #             flatten_output = torch.flatten(output, start_dim=1, end_dim=2)
-    #
-    #             distances = torch.from_numpy(pairwise_distances(flatten_label.cpu(), flatten_output.cpu(), metric=dice))
-    #             labels_indexes = [i for i, v in enumerate(flatten_label.sum(dim=1).tolist()) if v != 0]
-    #
-    #             indexes_reordered = []
-    #             for index in labels_indexes:
-    #                 is_matched = False
-    #                 distance = distances[index]
-    #
-    #                 while not is_matched:
-    #                     distance_argmax = distance.argmax().item()
-    #                     max_row = distance.max().item()
-    #                     max_col = distances[:, distance_argmax].max().item()
-    #                     is_empty = flatten_output[distance_argmax].sum().item() == 0
-    #
-    #                     print('distance_argmax', distance_argmax)
-    #
-    #                     if (max_row == max_col or is_empty) and distance_argmax not in indexes_reordered:
-    #                         is_matched = True
-    #                         indexes_reordered.append(distance_argmax)
-    #                     else:
-    #                         is_matched = False
-    #                         distance[distance_argmax] = -1
-    #
-    #             indexes_reordered += [i for i in range(num_classes) if i not in indexes_reordered]
-    #             print(indexes_reordered)
-    #             outputs[b] = output[indexes_reordered].argmax(dim=0)
-    #
-    #     return outputs
 
     def configure_optimizers(self):
         optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
