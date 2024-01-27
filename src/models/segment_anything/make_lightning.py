@@ -122,9 +122,8 @@ class SegSubLightning(pl.LightningModule):
         return metrics
 
     def log_image(self, inputs, outputs):
-        print(inputs['pixel_values'][0][0].shape)
-
-        pixel_values = tvF.resize(inputs['pixel_values'][0][0], (256, 256)).numpy(force=True)
+        pixel_values = inputs['pixel_values'][0][0].unsqueeze(0)
+        pixel_values = tvF.resize(pixel_values, (256, 256)).numpy(force=True)
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
