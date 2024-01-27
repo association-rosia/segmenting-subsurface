@@ -1,7 +1,9 @@
 import os
 import sys
+import warnings
 
 sys.path.append(os.curdir)
+warnings.filterwarnings('ignore')
 
 import torch
 import pytorch_lightning as pl

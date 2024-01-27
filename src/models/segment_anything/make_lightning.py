@@ -36,7 +36,7 @@ class SegSubLightning(pl.LightningModule):
         input_points = inputs['input_points']
         outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
 
-        print(outputs.shape)
+        print(outputs)
 
         return outputs
 
