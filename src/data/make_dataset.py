@@ -46,6 +46,8 @@ class SegSubDataset(Dataset):
 
         if 'reshaped_input_sizes' in inputs:
             inputs = self.create_sam_inputs(inputs, label)
+            self.plot_slice(inputs['pixel_values'])
+            self.plot_slice(inputs['labels'])
         else:
             inputs['labels'] = self.process_label(inputs['labels'])
 

@@ -2,7 +2,7 @@ dry: true
 
 random_state: 42
 max_epochs: 100
-criterion: 'DiceCrossEntropyLoss'
+criterion: 'JaccardCrossEntropyLoss'
 
 model_id: 'facebook/sam-vit-base'
 num_labels: 1
