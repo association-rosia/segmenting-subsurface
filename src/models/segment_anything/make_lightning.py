@@ -125,6 +125,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
+        print(pixel_values.shape)
         print(outputs.shape)
         print(ground_truth.shape)
 
