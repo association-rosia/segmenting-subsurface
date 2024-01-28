@@ -4,8 +4,9 @@ random_state: 42
 max_epochs: 100
 criterion: 'CrossEntropyLoss'
 
-#model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
-model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
+# model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
+# model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
+model_id: 'facebook/mask2former-swin-large-coco-instance'
 num_labels: 100
 num_channels: 3
 contrast_factor: 25

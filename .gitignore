@@ -2,3 +2,7 @@
 /data
 **/wandb
 **/.ipynb_checkpoints
+/reports
+/submissions
+**.egg-info
+__pycache__
