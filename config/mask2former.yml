@@ -1,0 +1,13 @@
+dry: true
+
+max_epochs: 100
+criterion: 'CrossEntropyLoss'
+
+# model_id: 'facebook/sam-vit-huge'
+model_id: 'facebook/sam-vit-base'
+num_channels: 3
+contrast_factor: 25
+
+model_prompt: 'k13mlcpr'
+
+lr: 0.0001

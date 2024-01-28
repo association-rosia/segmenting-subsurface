@@ -3,6 +3,8 @@
 **/wandb
 **/.ipynb_checkpoints
 /reports
+**/models
 /submissions
 **.egg-info
 __pycache__
+**.log

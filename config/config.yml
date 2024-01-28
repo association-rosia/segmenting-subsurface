@@ -5,6 +5,10 @@ path:
       root: 'data/raw'
       train: 'data/raw/train'
       test: 'data/raw/test'
+    processed:
+      root: 'data/processed'
+      train: 'data/processed/train'
+      test: 'data/processed/test'
   models:
     root: 'models'
 
