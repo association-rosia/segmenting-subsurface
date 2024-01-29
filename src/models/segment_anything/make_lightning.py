@@ -6,11 +6,12 @@ sys.path.append(os.curdir)
 import wandb
 import torch
 import torch.nn.functional as tF
+import torchvision.transforms.functional as tvF
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
-from transformers import SegformerForSemanticSegmentation
+from transformers import SamModel
 import torchmetrics as tm
 
 import src.models.losses as losses
@@ -22,7 +23,7 @@ class SegSubLightning(pl.LightningModule):
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
         self.config = args['config']
-        self.wandb = args['wandb']
+        self.wandb_config = args['wandb_config']
         self.model = args['model']
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
@@ -33,18 +34,11 @@ class SegSubLightning(pl.LightningModule):
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
-        outputs = self.model(pixel_values=pixel_values)
+        input_points = inputs['input_points']
+        outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
+        outputs = outputs['pred_masks'].squeeze()
 
-        upsampled_logits = tF.interpolate(
-            outputs.logits,
-            size=pixel_values.shape[-2:],
-            mode='bilinear',
-            align_corners=False
-        )
-
-        upsampled_logits = upsampled_logits.squeeze(1)
-
-        return upsampled_logits
+        return outputs
 
     def training_step(self, batch):
         item, inputs = batch
@@ -69,12 +63,12 @@ class SegSubLightning(pl.LightningModule):
         self.metrics.reset()
 
     def configure_optimizers(self):
-        optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
+        optimizer = AdamW(params=self.model.parameters(), lr=self.wandb_config['lr'])
 
         return optimizer
 
     def logits_to_labels(self, outputs):
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
         if num_labels == 1:
             outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
@@ -94,23 +88,23 @@ class SegSubLightning(pl.LightningModule):
 
     def configure_criterion(self):
         class_weights = self.get_class_weights()
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
-        if self.wandb.config.criterion == 'CrossEntropyLoss':
+        if self.wandb_config['criterion'] == 'CrossEntropyLoss':
             criterion = losses.CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
-        elif self.wandb.config.criterion == 'DiceLoss':
+        elif self.wandb_config['criterion'] == 'DiceLoss':
             criterion = losses.DiceLoss(num_labels=num_labels)
-        elif self.wandb.config.criterion == 'DiceCrossEntropyLoss':
+        elif self.wandb_config['criterion'] == 'DiceCrossEntropyLoss':
             criterion = losses.DiceCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
-        elif self.wandb.config.criterion == 'JaccardCrossEntropyLoss':
+        elif self.wandb_config['criterion'] == 'JaccardCrossEntropyLoss':
             criterion = losses.JaccardCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         else:
-            raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
+            raise ValueError(f'Unknown criterion: {self.wandb_config["criterion"]}')
 
         return criterion
 
     def configure_metrics(self):
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
         if num_labels == 1:
             metrics = tm.MetricCollection({
@@ -128,11 +122,12 @@ class SegSubLightning(pl.LightningModule):
         return metrics
 
     def log_image(self, inputs, outputs):
-        pixel_values = inputs['pixel_values'][0][0].numpy(force=True)
+        pixel_values = inputs['pixel_values'][0][0].unsqueeze(0)
+        pixel_values = tvF.resize(pixel_values, (256, 256)).numpy(force=True)
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
-        self.wandb.log(
+        wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
                 'predictions': {
                     'mask_data': outputs
@@ -143,13 +138,15 @@ class SegSubLightning(pl.LightningModule):
             })})
 
     def get_class_weights(self):
-        label_type = self.wandb.config.label_type
+        label_type = self.wandb_config['label_type']
 
         if label_type == 'border':
             class_weights = torch.Tensor([15])
         elif label_type == 'layer':
             class_weights = None
         elif label_type == 'semantic':
+            class_weights = None
+        elif label_type == 'one_hot':
             class_weights = None
         elif label_type == 'instance':
             class_weights = None
@@ -161,7 +158,7 @@ class SegSubLightning(pl.LightningModule):
     def train_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
             'volumes': self.train_volumes
         }
@@ -170,8 +167,8 @@ class SegSubLightning(pl.LightningModule):
 
         return DataLoader(
             dataset=dataset_train,
-            batch_size=self.wandb.config.batch_size,
-            num_workers=self.wandb.config.num_workers,
+            batch_size=self.wandb_config['batch_size'],
+            num_workers=self.wandb_config['num_workers'],
             shuffle=True,
             drop_last=True,
             pin_memory=True
@@ -180,7 +177,7 @@ class SegSubLightning(pl.LightningModule):
     def val_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
             'volumes': self.val_volumes
         }
@@ -189,8 +186,8 @@ class SegSubLightning(pl.LightningModule):
 
         return DataLoader(
             dataset=dataset_val,
-            batch_size=self.wandb.config.batch_size,
-            num_workers=self.wandb.config.num_workers,
+            batch_size=self.wandb_config['batch_size'],
+            num_workers=self.wandb_config['num_workers'],
             shuffle=False,
             drop_last=True,
             pin_memory=True
@@ -198,20 +195,19 @@ class SegSubLightning(pl.LightningModule):
 
 
 def get_model(wandb_config):
-    model = SegformerForSemanticSegmentation.from_pretrained(
+    model = SamModel.from_pretrained(
         pretrained_model_name_or_path=wandb_config.model_id,
-        num_labels=wandb_config.num_labels,
-        num_channels=wandb_config.num_channels,
         ignore_mismatched_sizes=True
     )
 
-    return processor, model
+    return model
 
 
 if __name__ == '__main__':
     config = utils.get_config()
-    wandb_config = utils.init_wandb('segformer.yml')
-    processor, model = get_model(wandb_config)
+    wandb_config = utils.init_wandb('segment_anything.yml')
+    processor = utils.get_processor(config, wandb_config)
+    model = get_model(wandb_config)
     train_volumes, val_volumes = md.get_training_volumes(config, wandb)
 
     args = {

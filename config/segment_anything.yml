@@ -1,0 +1,22 @@
+dry: false
+
+random_state: 42
+max_epochs: 10
+criterion: 'JaccardCrossEntropyLoss'
+
+model_id: 'facebook/sam-vit-base'
+num_labels: 1
+num_channels: 3
+contrast_factor: 25
+
+dilation: 30
+val_size: 0.2
+dim: '0'
+
+label_type: 'one_hot' # can be 'border', 'layer', 'semantic' 'one_hot' or 'instance'
+num_input_points: 20
+
+batch_size: 4
+num_workers: 23
+
+lr: 0.0001

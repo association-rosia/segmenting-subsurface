@@ -2,18 +2,20 @@ dry: false
 
 random_state: 42
 max_epochs: 100
-criterion: 'CrossEntropyLoss'
+criterion: 'DiceCrossEntropyLoss'
 
 #model_id: 'nvidia/segformer-b5-finetuned-ade-640-640'
 model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
-num_labels: 100
+num_labels: 1
 num_channels: 3
 contrast_factor: 25
 
-dilation: 10
+dilation: 30
 val_size: 0.2
 dim: '0'
-label_type: 'instance' # can be 'border', 'layer', 'semantic' or 'instance'
+
+label_type: 'layer' # can be 'border', 'layer', 'semantic' or 'instance'
+label_reorder: false
 
 batch_size: 16
 num_workers: 23
