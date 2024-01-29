@@ -54,7 +54,7 @@ def get_trainer(config, wandb_config):
             logger=pl.loggers.WandbLogger(),
             callbacks=[checkpoint_callback],
             strategy='ddp_find_unused_parameters_true',
-            val_check_interval=0.1,
+            val_check_interval=0.5,
             precision='16-mixed'
         )
 
