@@ -21,6 +21,10 @@ class SegSubPredictDataset(Dataset):
         return item
 
 
+def get_test_volumes():
+
+
+
 def main():
     segformer_id = None
     mask2former_id = None
@@ -39,19 +43,23 @@ def main():
         pass
         # if segformer_id:
         # load segformer processor & model
-        # segformer_output = process volume + predict binary mask
+        # for slice in slice (use SegSubDataset)
+        #   segformer_output = process volume + predict binary mask
 
         # if mask2former_id:
         # load mask2former processor & model
-        # mask2former_output = process volume & segformer_output + predict instance mask
+        # for slice in slice (use SegSubDataset)
+        #   mask2former_output = process volume & segformer_output + predict instance mask
 
         # if mask2former_id and segment_anything_id:
         # load segment_anything processor & model
-        # segment_anything_output = process volume & mask2former_output + predict instance mask
+        # for slice in slice (use SegSubDataset)
+        #   segment_anything_output = process volume & mask2former_output + predict instance mask
 
         # if not mask2former_id and segment_anything_id:
         # load segment_anything processor & model
-        # segment_anything_output = process volume & segformer_output + predict instance mask
+        # for slice in slice (use SegSubDataset)
+        #   segment_anything_output = process volume & segformer_output + predict instance mask
 
 
 if __name__ == '__main__':
