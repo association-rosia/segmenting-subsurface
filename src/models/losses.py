@@ -11,7 +11,7 @@ class CrossEntropyLoss(nn.Module):
 
     def forward(self, input, target):
         if self.num_labels == 1:
-            cross_entropy = tF.binary_cross_entropy_with_logits(input, target, pos_weight=self.class_weights)
+            cross_entropy = tF.binary_cross_entropy_with_logits(input, target.float(), pos_weight=self.class_weights)
         elif self.num_labels > 1:
             cross_entropy = tF.cross_entropy(input, target, weight=self.class_weights)
         else:
@@ -41,8 +41,8 @@ class DiceCrossEntropyLoss(nn.Module):
         super(DiceCrossEntropyLoss, self).__init__()
         self.num_labels = num_labels
         self.class_weights = class_weights
-        self.cross_entropy = CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         self.dice = DiceLoss(num_labels=num_labels)
+        self.cross_entropy = CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
 
     def forward(self, input, target):
         dice = self.dice(input, target)
@@ -51,12 +51,10 @@ class DiceCrossEntropyLoss(nn.Module):
         return dice + cross_entropy
 
 
-class JaccardCrossEntropyLoss(nn.Module):
-    def __init__(self, num_labels=None, class_weights=None):
-        super(JaccardCrossEntropyLoss, self).__init__()
+class JaccardLoss(nn.Module):
+    def __init__(self, num_labels=None):
+        super(JaccardLoss, self).__init__()
         self.num_labels = num_labels
-        self.class_weights = class_weights
-        self.cross_entropy = CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
 
     def forward(self, input, target):
         if self.num_labels == 1:
@@ -66,6 +64,19 @@ class JaccardCrossEntropyLoss(nn.Module):
         else:
             raise ValueError(f'Invalid num_labels: {self.num_labels}')
 
+        return jaccard
+
+
+class JaccardCrossEntropyLoss(nn.Module):
+    def __init__(self, num_labels=None, class_weights=None):
+        super(JaccardCrossEntropyLoss, self).__init__()
+        self.num_labels = num_labels
+        self.class_weights = class_weights
+        self.jaccard = JaccardLoss(num_labels=num_labels)
+        self.cross_entropy = CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
+
+    def forward(self, input, target):
+        jaccard = self.jaccard(input, target)
         cross_entropy = self.cross_entropy(input, target)
 
         return jaccard + cross_entropy
