@@ -11,6 +11,15 @@ path:
       test: 'data/processed/test'
   models:
     root: 'models'
+  reports:
+    root: 'reports'
+    figures: 'reports/figures'
+  sumbmissions:
+    root: 'submissions'
+
+wandb:
+  entity: 'association-rosia'
+  project: 'segmenting-subsurface'
 
 data:
   mean: 0.3865

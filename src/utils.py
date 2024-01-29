@@ -1,11 +1,10 @@
 import os
-
 import torch
 import wandb
 import yaml
 
 
-def get_device():
+def get_device() -> str:
     device = 'cpu'
     if torch.cuda.is_available():
         device = 'gpu'
@@ -15,7 +14,7 @@ def get_device():
     return device
 
 
-def get_config():
+def get_config() -> dict:
     root = os.path.join('config', 'config.yml')
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
@@ -26,18 +25,34 @@ def get_config():
     return config
 
 
-def init_wandb():
-    root = os.path.join('config', 'wandb.yml')
+def init_wandb(config_file: str) -> dict:
+    root = os.path.join('config', config_file)
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
 
     with open(path, 'r') as f:
         config = yaml.safe_load(f)
 
+    project_config = get_config()
+    
     wandb.init(
-        entity='association-rosia',
-        project='segmenting-subsurface',
+        entity=project_config['wandb']['entity'],
+        project=project_config['wandb']['project'],
         config=config
     )
 
-    return wandb
+    return wandb.config
+
+
+def get_run_config(run_id: str):
+    project_config = get_config()
+    
+    api = wandb.Api()
+    run = wandb.apis.public.Run(
+        client=api.client,
+        entity=project_config['wandb']['entity'],
+        project=project_config['wandb']['project'],
+        run_id=run_id,
+    )
+
+    return run

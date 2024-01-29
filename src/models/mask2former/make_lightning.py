@@ -1,12 +1,8 @@
-import os
-import sys
-
-sys.path.append(os.curdir)
-
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import torchmetrics as tm
+from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
 
 import src.data.make_dataset as md
 from src import utils
@@ -125,24 +121,39 @@ class SegSubLightning(pl.LightningModule):
         )
 
 
+def get_processor(config, wandb_config):
+    processor = Mask2FormerImageProcessor.from_pretrained(
+        pretrained_model_name_or_path=wandb_config['model_id'],
+        do_rescale=False,
+        image_mean=config['data']['mean'],
+        image_std=config['data']['std'],
+        reduce_labels=False
+    )
+    
+    return processor
+
+
+def get_model(wandb_config):
+    model = Mask2FormerForUniversalSegmentation.from_pretrained(
+        pretrained_model_name_or_path=wandb_config['model_id'],
+        num_labels=wandb_config['num_labels'],
+        num_channels=wandb_config['num_channels'],
+        ignore_mismatched_sizes=True
+    )
+
+    return model
+
+
+
 if __name__ == '__main__':
-    from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
     from sklearn.model_selection import train_test_split
 
     config = utils.get_config()
-    wandb = utils.init_wandb()
+    wandb_config = utils.init_wandb()
 
-    processor = Mask2FormerImageProcessor.from_pretrained(
-        wandb.config.model_id,
-        do_rescale=False,
-        num_labels=1
-    )
+    processor = get_processor(config, wandb_config)
 
-    model = Mask2FormerForUniversalSegmentation.from_pretrained(
-        wandb.config.model_id,
-        num_labels=1,
-        ignore_mismatched_sizes=True
-    )
+    model = get_model(wandb_config)
 
     test_volumes = md.get_volumes(config, set='test')
     train_volumes = md.get_volumes(config, set='train')
@@ -155,7 +166,7 @@ if __name__ == '__main__':
 
     args = {
         'config': config,
-        'wandb': wandb.config,
+        'wandb_config': wandb_config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,
