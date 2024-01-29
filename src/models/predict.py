@@ -1,28 +1,12 @@
 # import src.models.segformer.make_lightning as segformer_ml
 # import src.models.mask2former.make_lightning as mask2former_ml
 # import src.models.segment_anything.make_lightning as segment_anything_ml
-import numpy as np
-import torch
-from torch.utils.data import Dataset, DataLoader
 
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-class SegSubPredictDataset(Dataset):
-    def __init__(self, volumes):
-        self.volumes = volumes
-
-    def __len__(self):
-        return len(self.volumes)
-
-    def __getitem__(self, idx):
-        item = np.load(self.volumes[idx], allow_pickle=True)
-        item = torch.from_numpy(item)
-        item = item.to(dtype=torch.float32)
-
-        return item
-
-
-def get_test_volumes():
-
+import src.data.make_dataset as md
+import src.utils as utils
 
 
 def main():
@@ -30,36 +14,47 @@ def main():
     mask2former_id = None
     segment_anything_id = None
 
-    volumes = get_test_volumes()
+    config = utils.get_config()
+    wandb_config = {}  # based on segformer_id
+    test_volumes = md.get_volumes(config, set='test')
+    segformer_processor = utils.get_processor(config, wandb_config)
 
-    predict_dataset = SegSubPredictDataset(volumes)
-    predict_dataloader = DataLoader(
-        dataset=predict_dataset,
-        batch_size=1,
+    args = {
+        'config': config,
+        'wandb_config': wandb_config,  # based on segformer_id
+        'processor': segformer_processor,  # based on segformer_id
+        'volumes': test_volumes,
+    }
+
+    test_dataset = md.SegSubDataset(args)
+
+    test_dataloader = DataLoader(
+        dataset=test_dataset,
+        batch_size=wandb_config['batch_size'],
         shuffle=False
     )
 
-    for i, volume in enumerate(predict_dataloader):
+    for item, inputs in tqdm(test_dataloader):
         pass
         # if segformer_id:
         # load segformer processor & model
         # for slice in slice (use SegSubDataset)
-        #   segformer_output = process volume + predict binary mask
+        #   segformer_output = process volume + predicted binary mask
 
         # if mask2former_id:
         # load mask2former processor & model
         # for slice in slice (use SegSubDataset)
-        #   mask2former_output = process volume & segformer_output + predict instance mask
+        #   mask2former_output = process volume & segformer_output + predicted instance mask
 
         # if mask2former_id and segment_anything_id:
         # load segment_anything processor & model
         # for slice in slice (use SegSubDataset)
-        #   segment_anything_output = process volume & mask2former_output + predict instance mask
+        #   segment_anything_output = process volume & mask2former_output + predicted instance mask
 
         # if not mask2former_id and segment_anything_id:
         # load segment_anything processor & model
         # for slice in slice (use SegSubDataset)
-        #   segment_anything_output = process volume & segformer_output + predict instance mask
+        #   segment_anything_output = process volume & segformer_output + predicted instance mask
 
 
 if __name__ == '__main__':
