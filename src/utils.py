@@ -2,6 +2,7 @@ import os
 import torch
 import wandb
 import yaml
+from transformers import AutoImageProcessor
 
 
 def get_device() -> str:
@@ -25,8 +26,8 @@ def get_config() -> dict:
     return config
 
 
-def init_wandb(config_file: str) -> dict:
-    root = os.path.join('config', config_file)
+def init_wandb(yml_file):
+    root = os.path.join('config', yml_file)
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
 
@@ -42,6 +43,19 @@ def init_wandb(config_file: str) -> dict:
     )
 
     return wandb.config
+
+
+def get_processor(config, wandb_config):
+    processor = AutoImageProcessor.from_pretrained(
+        pretrained_model_name_or_path=wandb_config.model_id,
+        do_rescale=False,
+        image_mean=config['data']['mean'],
+        image_std=config['data']['std'],
+        do_reduce_labels=False,
+        do_pad=False
+    )
+
+    return processor
 
 
 def get_run_config(run_id: str):

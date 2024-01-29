@@ -5,6 +5,7 @@ sys.path.append(os.curdir)
 
 from glob import glob
 import torch
+import random
 import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -20,7 +21,7 @@ class SegSubDataset(Dataset):
     def __init__(self, args):
         super(SegSubDataset, self).__init__()
         self.config = args['config']
-        self.wandb = args['wandb']
+        self.wandb_config = args['wandb_config']
         self.processor = args['processor']
         self.volumes = args['volumes']
         self.slices = self.get_slices()
@@ -42,13 +43,29 @@ class SegSubDataset(Dataset):
         )
 
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-        inputs['labels'] = self.process_label(inputs['labels'])
+
+        if 'reshaped_input_sizes' in inputs:
+            inputs = self.create_sam_inputs(inputs, label)
+            self.plot_slice(inputs['pixel_values'])
+            self.plot_slice(inputs['labels'])
+        else:
+            inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
 
+    def create_sam_inputs(self, inputs, label):
+        inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
+        inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+        inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+        input_points_coord = torch.argwhere(inputs['labels']).tolist()
+        input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+        inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+        return inputs
+
     def get_slices(self):
-        dims = self.wandb.config.dim.split(',')
-        dilation = self.wandb.config.dilation
+        dims = self.wandb_config['dim'].split(',')
+        dilation = self.wandb_config['dilation']
         slices = []
 
         for volume in self.volumes:
@@ -84,8 +101,8 @@ class SegSubDataset(Dataset):
     def get_image(self, item):
         slice = self.get_slice(item, dtype=torch.float32)
         slice = self.scale(slice)
-        image = torch.stack([slice for _ in range(self.wandb.config.num_channels)])
-        contrast_factor = self.wandb.config.contrast_factor
+        image = torch.stack([slice for _ in range(self.wandb_config['num_channels'])])
+        contrast_factor = self.wandb_config['contrast_factor']
         image = tvF.adjust_contrast(image, contrast_factor=contrast_factor)
 
         return image
@@ -97,7 +114,7 @@ class SegSubDataset(Dataset):
         return label
 
     def process_label(self, label):
-        label_type = self.wandb.config.label_type
+        label_type = self.wandb_config['label_type']
 
         if label_type == 'border':
             label = self.get_border_label(label)
@@ -105,10 +122,19 @@ class SegSubDataset(Dataset):
             label = self.get_layer_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
+        elif label_type == 'one_hot':
+            label = self.get_one_hot_label(label)
         elif label_type == 'semantic':
             label = label
         else:
             raise ValueError(f'Unknown label_type: {label_type}')
+
+        return label
+
+    def get_one_hot_label(self, label):
+        indexes = torch.unique(label)
+        label = torch.permute(tF.one_hot(label.to(torch.int64)), (2, 0, 1))
+        label = label[indexes.tolist()]
 
         return label
 
@@ -147,6 +173,15 @@ class SegSubDataset(Dataset):
         plt.show()
 
 
+# def sam_collate_fn(batch):
+#     items = [el[0] for el in batch]
+#     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+#     labels = [el[1]['labels'] for el in batch]
+#     input_points = [el[1]['input_points'] for el in batch]
+#
+#     return items, {'pixel_values': pixel_values, 'labels': labels, 'input_points': input_points}
+
+
 def get_volumes(config, set):
     root_test = config['path']['data']['raw']['test']
     root_train = config['path']['data']['raw']['train']
@@ -164,9 +199,10 @@ def get_volumes(config, set):
     return volumes
 
 
-def get_training_volumes(config, wandb):
+def get_training_volumes(config, wandb_config):
     training_volumes = get_volumes(config, set='training')
-    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb.config.val_size)
+    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb_config['val_size'],
+                                                  random_state=wandb_config['random_state'])
 
     return train_volumes, val_volumes
 
@@ -195,10 +231,10 @@ def get_class_frequencies(train_dataloader):
     class_weights_list = [v for _, v in class_weights.items()]
     class_weights_proba = [el / sum(class_weights_list) for el in class_weights_list]
 
-    print('class_weights', class_weights)
-    print('class_weights_list', class_weights_list)
-    print('class_weights_proba', class_weights_proba)
-    print('num_labels', len(class_weights_proba), '/ max_num_classes', max_num_classes)
+    print('\nclass_weights', class_weights)
+    print('\nclass_weights_list', class_weights_list)
+    print('\nclass_weights_proba', class_weights_proba)
+    print('\nnum_labels', len(class_weights_proba), '- max_num_classes', max_num_classes)
     pass
 
 
@@ -246,19 +282,21 @@ def compute_image_mean_std(config):
 
 
 if __name__ == '__main__':
-    import src.models.segformer.make_lightning as ml
+    import src.models.segment_anything.make_lightning as sam_ml
+    # import src.models.segformer.make_lightning as seg_ml
     from torch.utils.data import DataLoader
 
     config = utils.get_config()
     # compute_image_mean_std(config)
-    wandb = utils.init_wandb()
+    wandb_config = utils.init_wandb('segment_anything.yml')
 
-    processor, model = ml.get_processor_model(config, wandb)
+    model = sam_ml.get_model(wandb_config)
+    processor = utils.get_processor(config, wandb_config)
     train_volumes = get_volumes(config, set='train')
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb_config,
         'processor': processor,
         'volumes': train_volumes,
     }
@@ -266,11 +304,11 @@ if __name__ == '__main__':
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=wandb.config.batch_size,
+        batch_size=wandb_config['batch_size'],
         shuffle=False
     )
 
-    get_class_frequencies(train_dataloader)
+    # get_class_frequencies(train_dataloader)
 
-    for item, inputs in train_dataloader:
-        break
+    for item, inputs in tqdm(train_dataloader):
+        pass

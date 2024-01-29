@@ -1,10 +1,13 @@
-**/.idea
+
 /data
+/models
+
+**/.idea
 **/wandb
 **/.ipynb_checkpoints
 /reports
 **/models
 /submissions
 **.egg-info
-__pycache__
 **.log
+**/__pycache__
