@@ -42,6 +42,7 @@ def get_processor(config, wandb_config):
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
         do_reduce_labels=False,
+        reduce_labels=False,
         do_pad=False
     )
 
