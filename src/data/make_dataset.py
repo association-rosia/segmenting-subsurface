@@ -77,8 +77,37 @@ class SegSubDataset(Dataset):
 
         return slices
 
-    def get_slice(self, item, dtype):
-        volume = np.load(item['volume'], allow_pickle=True)
+    def build_image(self, slice, segformer_mask):
+        num_channels_mask = self.wandb_config['num_channels_mask']
+
+        image = None
+        if num_channels_mask == 0:
+            image = torch.stack([slice, slice, slice])
+        elif num_channels_mask == 1:
+            image = torch.stack([slice, segformer_mask, slice])
+        elif num_channels_mask == 2:
+            image = torch.stack([segformer_mask, slice, segformer_mask])
+        elif num_channels_mask == 3:
+            image = torch.stack([segformer_mask, segformer_mask, segformer_mask])
+        else:
+            ValueError(f'Wrong num_channels_mask value: {num_channels_mask}')
+
+        return image
+
+    def get_segformer_mask(self, item):
+        segformer_mask = None
+
+        if self.wandb_config['segformer_id'] and self.wandb_config['num_channels_mask'] > 0:
+            data_path = self.config['path']['data']['processed']['train']
+            volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
+            path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
+            segformer_mask = self.get_slice(path, item, dtype=torch.float32)
+            segformer_mask = tF.sigmoid(segformer_mask) > 0.5
+
+        return segformer_mask
+
+    def get_slice(self, path, item, dtype, type=None):
+        volume = np.load(path, allow_pickle=True)
 
         if item['dim'] == '0':
             slice = volume[item['slice'], :, :]
@@ -91,6 +120,11 @@ class SegSubDataset(Dataset):
         slice = slice.to(dtype=dtype)
         slice = slice.T
 
+        if type == 'pixel_values':
+            slice = self.scale(slice).unsqueeze(0)
+            slice = tvF.adjust_contrast(slice, contrast_factor=self.wandb_config['contrast_factor'])
+            slice = slice.squeeze()
+
         return slice
 
     def scale(self, image):
@@ -99,17 +133,16 @@ class SegSubDataset(Dataset):
         return image
 
     def get_image(self, item):
-        slice = self.get_slice(item, dtype=torch.float32)
-        slice = self.scale(slice)
-        image = torch.stack([slice for _ in range(self.wandb_config['num_channels'])])
-        contrast_factor = self.wandb_config['contrast_factor']
-        image = tvF.adjust_contrast(image, contrast_factor=contrast_factor)
+        path = item['volume']
+        slice = self.get_slice(path, item, dtype=torch.float32, type='pixel_values')
+        segformer_mask = self.get_segformer_mask(item)
+        image = self.build_image(slice, segformer_mask)
 
         return image
 
     def get_label(self, item):
-        item['volume'] = item['volume'].replace('seismic', 'horizon_labels')
-        label = self.get_slice(item, dtype=torch.uint8)
+        path = item['volume'].replace('seismic', 'horizon_labels')
+        label = self.get_slice(path, item, dtype=torch.uint8)
 
         return label
 
@@ -302,4 +335,4 @@ if __name__ == '__main__':
     # get_class_frequencies(train_dataloader)
 
     for item, inputs in tqdm(train_dataloader):
-        pass
+        break

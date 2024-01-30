@@ -5,8 +5,21 @@ path:
       root: 'data/raw'
       train: 'data/raw/train'
       test: 'data/raw/test'
+    processed:
+      root: 'data/processed'
+      train: 'data/processed/train'
+      test: 'data/processed/test'
   models:
     root: 'models'
+  reports:
+    root: 'reports'
+    figures: 'reports/figures'
+  submissions:
+    root: 'submissions'
+
+wandb:
+  entity: 'association-rosia'
+  project: 'segmenting-subsurface'
 
 data:
   mean: 0.3865
