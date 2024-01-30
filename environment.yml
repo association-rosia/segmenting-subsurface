@@ -13,3 +13,4 @@ dependencies:
       - wandb
       - matplotlib
       - scikit-learn
+      - jupyter

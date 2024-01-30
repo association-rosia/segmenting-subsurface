@@ -5,16 +5,6 @@ import yaml
 from transformers import AutoImageProcessor
 
 
-def get_device() -> str:
-    device = 'cpu'
-    if torch.cuda.is_available():
-        device = 'gpu'
-    elif torch.backends.mps.is_available():
-        device = 'mps'
-
-    return device
-
-
 def get_config() -> dict:
     root = os.path.join('config', 'config.yml')
     notebooks = os.path.join(os.pardir, root)
@@ -47,7 +37,7 @@ def init_wandb(yml_file):
 
 def get_processor(config, wandb_config):
     processor = AutoImageProcessor.from_pretrained(
-        pretrained_model_name_or_path=wandb_config.model_id,
+        pretrained_model_name_or_path=wandb_config['model_id'],
         do_rescale=False,
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],

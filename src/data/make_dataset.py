@@ -25,8 +25,8 @@ class SegSubDataset(Dataset):
         self.processor = args['processor']
         self.volumes = args['volumes']
         self.slices = self.get_slices()
-        self.volume_min = -1215.0
-        self.volume_max = 1930.0
+        self.volume_min = args['config']['data']['min']
+        self.volume_max = args['config']['data']['max']
 
     def __len__(self):
         return len(self.slices)

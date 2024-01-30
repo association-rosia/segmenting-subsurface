@@ -61,7 +61,7 @@ def get_lightning(config, wandb):
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb.config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,
