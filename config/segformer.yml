@@ -14,8 +14,7 @@ dilation: 30
 val_size: 0.2
 dim: '0'
 
-label_type: 'layer' # can be 'border', 'layer', 'semantic' or 'instance'
-label_reorder: false
+label_type: 'layer'
 
 batch_size: 16
 num_workers: 23
