@@ -55,7 +55,7 @@ def main():
 
     for item, inputs in tqdm(test_dataloader):
         save_path = get_save_path(item, submission_path)
-        inputs = send_inputs_to_device(inputs)
+        inputs = preprocess(inputs)
         outputs = model(inputs)
         outputs = unprocess(outputs)
         save_outputs(outputs, save_path)
@@ -63,8 +63,9 @@ def main():
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
-def send_inputs_to_device(inputs):
+def preprocess(inputs):
     device = utils.get_device()
+    inputs['pixel_values'] = inputs['pixel_values'].to(torch.float16)
     inputs['pixel_values'] = inputs['pixel_values'].to(device)
 
     return inputs

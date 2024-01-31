@@ -106,7 +106,10 @@ def load_segformer_model(config, run):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
-    lightning = lightning.to(get_device())
+
+    device = get_device()
+    lightning = lightning.to(torch.float16)
+    lightning = lightning.to(device)
 
     return lightning
 
@@ -126,6 +129,9 @@ def load_segment_anything(config, run):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
-    lightning = lightning.to(get_device())
+
+    device = get_device()
+    lightning = lightning.to(torch.float16)
+    lightning = lightning.to(device)
 
     return lightning
