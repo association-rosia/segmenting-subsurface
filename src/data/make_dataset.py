@@ -39,7 +39,7 @@ class SegSubDataset(Dataset):
         return item, inputs
 
     def get_inputs(self, image, label):
-        if self.set == 'train':
+        if self.set == 'train' or self.set == 'val':
             inputs = self.processor(images=image, segmentation_maps=label, return_tensors='pt')
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
@@ -51,8 +51,6 @@ class SegSubDataset(Dataset):
         else:
             inputs = self.processor(images=image, return_tensors='pt')
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-
-        print(inputs)
 
         return inputs
 
