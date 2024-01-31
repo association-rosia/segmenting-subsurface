@@ -53,12 +53,13 @@ def main():
 
     # model = MokeModel()
 
-    for item, inputs in tqdm(test_dataloader):
-        save_path = get_save_path(item, submission_path)
-        inputs = preprocess(inputs)
-        outputs = model(inputs)
-        outputs = unprocess(outputs)
-        save_outputs(outputs, save_path)
+    with torch.no_grad():
+        for item, inputs in tqdm(test_dataloader):
+            save_path = get_save_path(item, submission_path)
+            inputs = preprocess(inputs)
+            outputs = model(inputs)
+            outputs = unprocess(outputs)
+            save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
