@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 import torchmetrics as tm
-from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
+from transformers import Mask2FormerForUniversalSegmentation
 
 import src.data.make_dataset as md
 from src import utils
@@ -74,12 +74,21 @@ class SegSubLightning(pl.LightningModule):
     def configure_metrics(self):
         num_labels = self.wandb_config['num_labels']
 
-        metrics = tm.MetricCollection({
-            'val/dice': tm.Dice(num_classes=num_labels, average='macro'),
-            'val/iou': tm.JaccardIndex(task='multiclass', num_classes=num_labels),
-        })
-        
+        if num_labels == 1:
+            metrics = tm.MetricCollection({
+                'val/dice': tm.Dice(),
+                'val/iou': tm.classification.BinaryJaccardIndex()
+            })
+        elif num_labels > 1:
+            metrics = tm.MetricCollection({
+                'val/dice': tm.Dice(num_classes=num_labels, average='macro'),
+                'val/iou': tm.JaccardIndex(task='multiclass', num_classes=num_labels),
+            })
+        else:
+            raise ValueError(f'Invalid num_labels: {num_labels}')
+
         return metrics
+
 
     def train_dataloader(self):
         args = {
@@ -121,23 +130,10 @@ class SegSubLightning(pl.LightningModule):
         )
 
 
-def get_processor(config, wandb_config):
-    processor = Mask2FormerImageProcessor.from_pretrained(
-        pretrained_model_name_or_path=wandb_config['model_id'],
-        do_rescale=False,
-        image_mean=config['data']['mean'],
-        image_std=config['data']['std'],
-        reduce_labels=False
-    )
-    
-    return processor
-
-
 def get_model(wandb_config):
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb_config['model_id'],
         num_labels=wandb_config['num_labels'],
-        num_channels=wandb_config['num_channels'],
         ignore_mismatched_sizes=True
     )
 
@@ -149,9 +145,9 @@ if __name__ == '__main__':
     from sklearn.model_selection import train_test_split
 
     config = utils.get_config()
-    wandb_config = utils.init_wandb()
+    wandb_config = utils.init_wandb(yml_file='mask2former.yml')
 
-    processor = get_processor(config, wandb_config)
+    processor = utils.get_processor(config, wandb_config)
 
     model = get_model(wandb_config)
 
@@ -174,5 +170,3 @@ if __name__ == '__main__':
     }
 
     lightning = SegSubLightning(args)
-
-    pass

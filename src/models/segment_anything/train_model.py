@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 import torch
 import pytorch_lightning as pl
 
-import src.models.segment_anything.make_lightning as sam_ml
+import make_lightning as ml
 import src.data.make_dataset as md
 from src import utils
 
@@ -64,7 +64,7 @@ def get_trainer(config, wandb_config):
 def get_lightning(config, wandb_config):
     train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
     processor = utils.get_processor(config, wandb_config)
-    model = sam_ml.get_model(wandb_config)
+    model = ml.get_model(wandb_config)
 
     args = {
         'config': config,
@@ -75,7 +75,7 @@ def get_lightning(config, wandb_config):
         'val_volumes': val_volumes
     }
 
-    lightning = sam_ml.SegSubLightning(args)
+    lightning = ml.SegSubLightning(args)
 
     return lightning
 

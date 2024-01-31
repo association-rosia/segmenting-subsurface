@@ -41,7 +41,7 @@ class SegSubLightning(pl.LightningModule):
         return outputs
 
     def training_step(self, batch):
-        item, inputs = batch
+        _, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
@@ -49,7 +49,7 @@ class SegSubLightning(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        item, inputs = batch
+        _, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
@@ -208,11 +208,11 @@ if __name__ == '__main__':
     wandb_config = utils.init_wandb('segment_anything.yml')
     processor = utils.get_processor(config, wandb_config)
     model = get_model(wandb_config)
-    train_volumes, val_volumes = md.get_training_volumes(config, wandb)
+    train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb_config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,
