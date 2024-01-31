@@ -33,6 +33,7 @@ class SegSubLightning(pl.LightningModule):
         self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
+        print(inputs)
         pixel_values = inputs['pixel_values']
         input_points = inputs['input_points']
         outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
