@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as tF
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -57,11 +57,30 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             inputs = preprocess(inputs)
-            outputs = model(inputs)
+            outputs = predict(model, item, inputs)
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
+
+
+def predict(model, item, inputs, n=10):
+    device = utils.get_device()
+    inputs_shape = inputs['pixel_values'].shape
+    outputs = torch.zeros((inputs_shape[0], inputs_shape[-2], inputs_shape[-1]), dtype=torch.uint8, device=device)
+    indexes = item['slice'].view(n, 300 // n).tolist()
+
+    for index in indexes:
+        inputs_index = dict()
+        inputs_index['pixel_values'] = inputs['pixel_values'][index]
+        outputs_index = model(inputs_index)
+
+        if outputs_index.dim() == 4:
+            outputs[index] = (tF.sigmoid(outputs_index).argmax(dim=1)).type(torch.uint8)
+        else:
+            outputs[index] = outputs_index.type(torch.uint8)
+
+    return outputs
 
 
 def preprocess(inputs):
@@ -84,7 +103,7 @@ def get_save_path(item, submission_path):
 
 
 def unprocess(outputs):
-    outputs = F.interpolate(outputs.unsqueeze(0), size=(100, 300), mode='bilinear', align_corners=False)
+    outputs = tF.interpolate(outputs.unsqueeze(0), size=(100, 300), mode='bilinear', align_corners=False)
     outputs = outputs.squeeze(0)
     outputs = torch.movedim(outputs, 1, 2)
     outputs = outputs.to(torch.int8)
@@ -94,9 +113,7 @@ def unprocess(outputs):
 
 def save_outputs(outputs, save_path):
     outputs = outputs.detach().cpu().numpy()
-
-    with open(save_path, 'wb') as f:
-        np.save(f, outputs)
+    np.save(save_path, outputs, allow_pickle=True)
 
 
 def load_model_processor(config, run, mask2former_id, segment_anything_id):
