@@ -52,6 +52,8 @@ class SegSubDataset(Dataset):
             inputs = self.processor(images=image, return_tensors='pt')
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
+        print(inputs)
+
         return inputs
 
     def create_sam_inputs(self, inputs, label):
