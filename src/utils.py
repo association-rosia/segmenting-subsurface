@@ -110,6 +110,7 @@ def load_segformer_model(config, run):
     device = get_device()
     lightning = lightning.to(torch.float16)
     lightning = lightning.to(device)
+    lightning.enable_vae_slicing()
 
     return lightning
 
@@ -133,5 +134,6 @@ def load_segment_anything(config, run):
     device = get_device()
     lightning = lightning.to(torch.float16)
     lightning = lightning.to(device)
+    lightning.enable_vae_slicing()
 
     return lightning
