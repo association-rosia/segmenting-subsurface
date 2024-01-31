@@ -10,8 +10,6 @@ import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from src import utils
@@ -121,7 +119,7 @@ class SegSubDataset(Dataset):
 
         slice = torch.from_numpy(slice)
         slice = slice.to(dtype=dtype)
-        slice = slice.T
+        slice = torch.movedim(slice, 0, 1)
 
         if type == 'pixel_values':
             slice = self.scale(slice).unsqueeze(0)
@@ -196,20 +194,6 @@ class SegSubDataset(Dataset):
         label = label - label.min()
 
         return label
-
-    def plot_slice(self, slice):
-        ax = plt.subplot()
-
-        if slice.shape[0] == 3:
-            im = ax.imshow(slice[0], cmap='gray')
-        else:
-            im = ax.imshow(slice, interpolation='nearest')
-
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        plt.colorbar(im, cax=cax)
-
-        plt.show()
 
 
 def get_volumes(config, set):

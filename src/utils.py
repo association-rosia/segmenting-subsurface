@@ -1,8 +1,10 @@
 import os
 
+import matplotlib.pyplot as plt
 import torch
 import wandb
 import yaml
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from transformers import AutoImageProcessor
 
 import src.models.segformer.make_lightning as segformer_ml
@@ -12,7 +14,7 @@ import src.models.segment_anything.make_lightning as segment_anything_ml
 def get_device():
     device = 'cpu'
     if torch.cuda.is_available():
-        device = 'gpu'
+        device = 'cuda'
     elif torch.backends.mps.is_available():
         device = 'mps'
 
@@ -45,6 +47,21 @@ def init_wandb(yml_file):
     )
 
     return wandb.config
+
+
+def plot_slice(slice):
+    ax = plt.subplot()
+
+    if slice.shape[0] == 3:
+        im = ax.imshow(slice[0], cmap='gray')
+    else:
+        im = ax.imshow(slice, interpolation='nearest')
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    plt.colorbar(im, cax=cax)
+
+    plt.show()
 
 
 def get_processor(config, wandb_config):
@@ -89,6 +106,7 @@ def load_segformer_model(config, run):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+    lightning = lightning.to(get_device())
 
     return lightning
 
@@ -108,5 +126,6 @@ def load_segment_anything(config, run):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+    lightning = lightning.to(get_device())
 
     return lightning

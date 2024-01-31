@@ -1,12 +1,26 @@
-# import src.models.segformer.make_lightning as segformer_ml
-# import src.models.mask2former.make_lightning as mask2former_ml
-# import src.models.segment_anything.make_lightning as segment_anything_ml
+import os
+import shutil
+import warnings
 
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import src.data.make_dataset as md
 import src.utils as utils
+
+warnings.filterwarnings('ignore')
+
+
+class MokeModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, inputs):
+        return (torch.max(inputs['pixel_values'], dim=1).values > 0).to(torch.float32)
 
 
 def main():
@@ -15,6 +29,8 @@ def main():
     segment_anything_id = None
 
     config = utils.get_config()
+    submission_path = create_path(config, mask2former_id, segment_anything_id)
+
     run = get_run_from_model_id(mask2former_id, segment_anything_id)
     model, processor = load_model_processor(config, run, mask2former_id, segment_anything_id)
     test_volumes = md.get_volumes(config, set='test')
@@ -35,8 +51,50 @@ def main():
         shuffle=False
     )
 
+    # model = MokeModel()
+
     for item, inputs in tqdm(test_dataloader):
-        pass
+        save_path = get_save_path(item, submission_path)
+        inputs = send_inputs_to_device(inputs)
+        outputs = model(inputs)
+        outputs = unprocess(outputs)
+        save_outputs(outputs, save_path)
+
+    shutil.make_archive(submission_path, 'zip', submission_path)
+
+
+def send_inputs_to_device(inputs):
+    device = utils.get_device()
+    inputs['pixel_values'] = inputs['pixel_values'].to(device)
+
+    return inputs
+
+
+def get_save_path(item, submission_path):
+    volume_path = list(set(item['volume']))
+    assert len(volume_path) == 1
+    volume_path = volume_path[0]
+    volume_path = os.path.split(volume_path)[-1]
+    volume_path = volume_path.replace('test', 'sub')
+    save_path = os.path.join(submission_path, volume_path)
+
+    return save_path
+
+
+def unprocess(outputs):
+    outputs = F.interpolate(outputs.unsqueeze(0), size=(100, 300), mode='bilinear', align_corners=False)
+    outputs = outputs.squeeze(0)
+    outputs = torch.movedim(outputs, 1, 2)
+    outputs = outputs.to(torch.int8)
+
+    return outputs
+
+
+def save_outputs(outputs, save_path):
+    outputs = outputs.detach().cpu().numpy()
+
+    with open(save_path, 'wb') as f:
+        np.save(f, outputs)
 
 
 def load_model_processor(config, run, mask2former_id, segment_anything_id):
@@ -51,15 +109,14 @@ def load_model_processor(config, run, mask2former_id, segment_anything_id):
     else:
         lightning = utils.load_segment_anything(config, run)
 
-    model = lightning.model
     processor = lightning.processor
 
-    return model, processor
+    return lightning, processor
 
 
 def get_run_from_model_id(mask2former_id, segment_anything_id):
     run = None
-    
+
     if mask2former_id and segment_anything_id:
         ValueError(f"Mask2former and SAM can't be both defined: {mask2former_id} - {segment_anything_id}")
     elif not mask2former_id and not segment_anything_id:
@@ -72,6 +129,14 @@ def get_run_from_model_id(mask2former_id, segment_anything_id):
     run.config['dilation'] = 1
 
     return run
+
+
+def create_path(config, mask2former_id, segment_anything_id):
+    # os.makedirs(config['submissions']['root'], exist_ok=True)
+    submission_path = os.path.join(config['path']['submissions']['root'], f'{mask2former_id}_{segment_anything_id}')
+    os.makedirs(submission_path, exist_ok=True)
+
+    return submission_path
 
 
 if __name__ == '__main__':
