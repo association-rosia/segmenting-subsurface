@@ -132,7 +132,6 @@ def get_run_from_model_id(mask2former_id, segment_anything_id):
 
 
 def create_path(config, mask2former_id, segment_anything_id):
-    # os.makedirs(config['submissions']['root'], exist_ok=True)
     submission_path = os.path.join(config['path']['submissions']['root'], f'{mask2former_id}_{segment_anything_id}')
     os.makedirs(submission_path, exist_ok=True)
 
