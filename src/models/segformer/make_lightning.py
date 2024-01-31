@@ -22,7 +22,7 @@ class SegSubLightning(pl.LightningModule):
     def __init__(self, args):
         super(SegSubLightning, self).__init__()
         self.config = args['config']
-        self.wandb = args['wandb']
+        self.wandb_config = args['wandb_config']
         self.model = args['model']
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
@@ -69,12 +69,12 @@ class SegSubLightning(pl.LightningModule):
         self.metrics.reset()
 
     def configure_optimizers(self):
-        optimizer = AdamW(params=self.model.parameters(), lr=self.wandb.config.lr)
+        optimizer = AdamW(params=self.model.parameters(), lr=self.wandb_config['lr'])
 
         return optimizer
 
     def logits_to_labels(self, outputs):
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
         if num_labels == 1:
             outputs = (tF.sigmoid(outputs) > 0.5).type(torch.uint8)
@@ -94,23 +94,23 @@ class SegSubLightning(pl.LightningModule):
 
     def configure_criterion(self):
         class_weights = self.get_class_weights()
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
-        if self.wandb.config.criterion == 'CrossEntropyLoss':
+        if self.wandb_config['criterion'] == 'CrossEntropyLoss':
             criterion = losses.CrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
-        elif self.wandb.config.criterion == 'DiceLoss':
+        elif self.wandb_config['criterion'] == 'DiceLoss':
             criterion = losses.DiceLoss(num_labels=num_labels)
-        elif self.wandb.config.criterion == 'DiceCrossEntropyLoss':
+        elif self.wandb_config['criterion'] == 'DiceCrossEntropyLoss':
             criterion = losses.DiceCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
-        elif self.wandb.config.criterion == 'JaccardCrossEntropyLoss':
+        elif self.wandb_config['criterion'] == 'JaccardCrossEntropyLoss':
             criterion = losses.JaccardCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         else:
-            raise ValueError(f'Unknown criterion: {self.wandb.config.criterion}')
+            raise ValueError(f'Unknown criterion: {self.wandb_config["criterion"]}')
 
         return criterion
 
     def configure_metrics(self):
-        num_labels = self.wandb.config.num_labels
+        num_labels = self.wandb_config['num_labels']
 
         if num_labels == 1:
             metrics = tm.MetricCollection({
@@ -143,7 +143,7 @@ class SegSubLightning(pl.LightningModule):
             })})
 
     def get_class_weights(self):
-        label_type = self.wandb.config.label_type
+        label_type = self.wandb_config['label_type']
 
         if label_type == 'border':
             class_weights = torch.Tensor([15])
@@ -163,15 +163,16 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb': self.wandb,
             'processor': self.processor,
-            'volumes': self.train_volumes
+            'volumes': self.train_volumes,
+            'set': 'train'
         }
 
         dataset_train = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_train,
-            batch_size=self.wandb.config.batch_size,
-            num_workers=self.wandb.config.num_workers,
+            batch_size=self.wandb_config['batch_size'],
+            num_workers=self.wandb_config['num_workers'],
             shuffle=True,
             drop_last=True,
             pin_memory=True
@@ -182,15 +183,16 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb': self.wandb,
             'processor': self.processor,
-            'volumes': self.val_volumes
+            'volumes': self.val_volumes,
+            'set': 'val'
         }
 
         dataset_val = md.SegSubDataset(args)
 
         return DataLoader(
             dataset=dataset_val,
-            batch_size=self.wandb.config.batch_size,
-            num_workers=self.wandb.config.num_workers,
+            batch_size=self.wandb_config['batch_size'],
+            num_workers=self.wandb_config['num_workers'],
             shuffle=False,
             drop_last=True,
             pin_memory=True
@@ -199,13 +201,13 @@ class SegSubLightning(pl.LightningModule):
 
 def get_model(wandb_config):
     model = SegformerForSemanticSegmentation.from_pretrained(
-        pretrained_model_name_or_path=wandb_config.model_id,
-        num_labels=wandb_config.num_labels,
-        num_channels=wandb_config.num_channels,
+        pretrained_model_name_or_path=wandb_config['model_id'],
+        num_labels=wandb_config['num_labels'],
+        num_channels=wandb_config['num_channels'],
         ignore_mismatched_sizes=True
     )
 
-    return processor, model
+    return model
 
 
 if __name__ == '__main__':

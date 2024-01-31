@@ -24,9 +24,10 @@ class SegSubDataset(Dataset):
         self.wandb_config = args['wandb_config']
         self.processor = args['processor']
         self.volumes = args['volumes']
+        self.set = args['set']
         self.slices = self.get_slices()
-        self.volume_min = -1215.0
-        self.volume_max = 1930.0
+        self.volume_min = self.config['data']['min']
+        self.volume_max = self.config['data']['max']
 
     def __len__(self):
         return len(self.slices)
@@ -35,23 +36,25 @@ class SegSubDataset(Dataset):
         item = self.slices[idx]
         image = self.get_image(item)
         label = self.get_label(item)
-
-        inputs = self.processor(
-            images=image,
-            segmentation_maps=label,
-            return_tensors='pt'
-        )
-
-        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-
-        if 'reshaped_input_sizes' in inputs:
-            inputs = self.create_sam_inputs(inputs, label)
-            self.plot_slice(inputs['pixel_values'])
-            self.plot_slice(inputs['labels'])
-        else:
-            inputs['labels'] = self.process_label(inputs['labels'])
+        inputs = self.get_inputs(image, label)
 
         return item, inputs
+
+    def get_inputs(self, image, label):
+        if self.set == 'train':
+            inputs = self.processor(images=image, segmentation_maps=label, return_tensors='pt')
+            inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+
+            if 'reshaped_input_sizes' in inputs:
+                inputs = self.create_sam_inputs(inputs, label)
+            else:
+                inputs['labels'] = self.process_label(inputs['labels'])
+
+        else:
+            inputs = self.processor(images=image, return_tensors='pt')
+            inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+
+        return inputs
 
     def create_sam_inputs(self, inputs, label):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
@@ -78,10 +81,10 @@ class SegSubDataset(Dataset):
         return slices
 
     def build_image(self, slice, segformer_mask):
-        num_channels_mask = self.wandb_config['num_channels_mask']
+        num_channels_mask = self.wandb_config.get('num_channels_mask')
 
         image = None
-        if num_channels_mask == 0:
+        if not num_channels_mask or num_channels_mask == 0:
             image = torch.stack([slice, slice, slice])
         elif num_channels_mask == 1:
             image = torch.stack([slice, segformer_mask, slice])
@@ -97,7 +100,7 @@ class SegSubDataset(Dataset):
     def get_segformer_mask(self, item):
         segformer_mask = None
 
-        if self.wandb_config['segformer_id'] and self.wandb_config['num_channels_mask'] > 0:
+        if self.wandb_config.get('segformer_id') and self.wandb_config['num_channels_mask'] > 0:
             data_path = self.config['path']['data']['processed']['train']
             volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
             path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
@@ -141,8 +144,11 @@ class SegSubDataset(Dataset):
         return image
 
     def get_label(self, item):
-        path = item['volume'].replace('seismic', 'horizon_labels')
-        label = self.get_slice(path, item, dtype=torch.uint8)
+        label = None
+
+        if self.set != 'test':
+            path = item['volume'].replace('seismic', 'horizon_labels')
+            label = self.get_slice(path, item, dtype=torch.uint8)
 
         return label
 
@@ -209,8 +215,8 @@ class SegSubDataset(Dataset):
 def get_volumes(config, set):
     root_test = config['path']['data']['raw']['test']
     root_train = config['path']['data']['raw']['train']
-    notebooks_test = os.path.join(os.pardir, root_test)  # get path from notebooks
-    notebooks_train = os.path.join(os.pardir, root_train)  # get path from notebooks
+    notebooks_test = os.path.join(os.pardir, root_test)
+    notebooks_train = os.path.join(os.pardir, root_train)
 
     root = root_test if set == 'test' else root_train
     notebooks = notebooks_test if set == 'test' else notebooks_train
@@ -225,7 +231,8 @@ def get_volumes(config, set):
 
 def get_training_volumes(config, wandb_config):
     training_volumes = get_volumes(config, set='training')
-    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb_config['val_size'],
+    train_volumes, val_volumes = train_test_split(training_volumes,
+                                                  test_size=wandb_config['val_size'],
                                                   random_state=wandb_config['random_state'])
 
     return train_volumes, val_volumes
@@ -323,6 +330,7 @@ if __name__ == '__main__':
         'wandb_config': wandb_config,
         'processor': processor,
         'volumes': train_volumes,
+        'set': 'train'
     }
 
     train_dataset = SegSubDataset(args)
@@ -334,5 +342,5 @@ if __name__ == '__main__':
 
     # get_class_frequencies(train_dataloader)
 
-    for item, inputs in tqdm(train_dataloader):
+    for item, inputs in train_dataloader:
         break

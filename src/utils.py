@@ -5,6 +5,9 @@ import wandb
 import yaml
 from transformers import AutoImageProcessor
 
+import src.models.segformer.make_lightning as segformer_ml
+import src.models.segment_anything.make_lightning as segment_anything_ml
+
 
 def get_device():
     device = 'cpu'
@@ -46,7 +49,7 @@ def init_wandb(yml_file):
 
 def get_processor(config, wandb_config):
     processor = AutoImageProcessor.from_pretrained(
-        pretrained_model_name_or_path=wandb_config.model_id,
+        pretrained_model_name_or_path=wandb_config['model_id'],
         do_rescale=False,
         image_mean=config['data']['mean'],
         image_std=config['data']['std'],
@@ -55,3 +58,55 @@ def get_processor(config, wandb_config):
     )
 
     return processor
+
+
+def get_run(run_id: str):
+    project_config = get_config()
+
+    api = wandb.Api()
+    run = wandb.apis.public.Run(
+        client=api.client,
+        entity=project_config['wandb']['entity'],
+        project=project_config['wandb']['project'],
+        run_id=run_id,
+    )
+
+    return run
+
+
+def load_segformer_model(config, run):
+    processor = get_processor(config, run.config)
+    model = segformer_ml.get_model(run.config)
+
+    args = {
+        'config': config,
+        'wandb_config': run.config,
+        'model': model,
+        'processor': processor,
+        'train_volumes': None,
+        'val_volumes': None
+    }
+
+    path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
+    lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+
+    return lightning
+
+
+def load_segment_anything(config, run):
+    processor = get_processor(config, run.config)
+    model = segment_anything_ml.get_model(run.config)
+
+    args = {
+        'config': config,
+        'wandb_config': run.config,
+        'model': model,
+        'processor': processor,
+        'train_volumes': None,
+        'val_volumes': None
+    }
+
+    path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
+    lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+
+    return lightning

@@ -10,51 +10,68 @@ import src.utils as utils
 
 
 def main():
-    segformer_id = None
-    mask2former_id = None
+    segformer_id = '4u9c0boz'
+    mask2former_id = segformer_id
     segment_anything_id = None
 
     config = utils.get_config()
-    wandb_config = {}  # based on segformer_id
+    run = get_run_from_model_id(mask2former_id, segment_anything_id)
+    model, processor = load_model_processor(config, run, mask2former_id, segment_anything_id)
     test_volumes = md.get_volumes(config, set='test')
-    segformer_processor = utils.get_processor(config, wandb_config)
 
     args = {
         'config': config,
-        'wandb_config': wandb_config,  # based on segformer_id
-        'processor': segformer_processor,  # based on segformer_id
+        'wandb_config': run.config,
+        'processor': processor,
         'volumes': test_volumes,
+        'set': 'test'
     }
 
     test_dataset = md.SegSubDataset(args)
 
     test_dataloader = DataLoader(
         dataset=test_dataset,
-        batch_size=wandb_config['batch_size'],
+        batch_size=300,
         shuffle=False
     )
 
     for item, inputs in tqdm(test_dataloader):
         pass
-        # if segformer_id:
-        # load segformer processor & model
-        # for slice in slice (use SegSubDataset)
-        #   segformer_output = process volume + predicted binary mask
 
-        # if mask2former_id:
-        # load mask2former processor & model
-        # for slice in slice (use SegSubDataset)
-        #   mask2former_output = process volume & segformer_output + predicted instance mask
 
-        # if mask2former_id and segment_anything_id:
-        # load segment_anything processor & model
-        # for slice in slice (use SegSubDataset)
-        #   segment_anything_output = process volume & mask2former_output + predicted instance mask
+def load_model_processor(config, run, mask2former_id, segment_anything_id):
+    lightning = None
 
-        # if not mask2former_id and segment_anything_id:
-        # load segment_anything processor & model
-        # for slice in slice (use SegSubDataset)
-        #   segment_anything_output = process volume & segformer_output + predicted instance mask
+    if mask2former_id and segment_anything_id:
+        ValueError(f"Mask2former and SAM can't be both defined: {mask2former_id} - {segment_anything_id}")
+    elif not mask2former_id and not segment_anything_id:
+        ValueError(f"Mask2former and SAM can't be both null")
+    elif mask2former_id:
+        lightning = utils.load_segformer_model(config, run)
+    else:
+        lightning = utils.load_segment_anything(config, run)
+
+    model = lightning.model
+    processor = lightning.processor
+
+    return model, processor
+
+
+def get_run_from_model_id(mask2former_id, segment_anything_id):
+    run = None
+    
+    if mask2former_id and segment_anything_id:
+        ValueError(f"Mask2former and SAM can't be both defined: {mask2former_id} - {segment_anything_id}")
+    elif not mask2former_id and not segment_anything_id:
+        ValueError(f"Mask2former and SAM can't be both null")
+    elif mask2former_id:
+        run = utils.get_run(mask2former_id)
+    else:
+        run = utils.get_run(segment_anything_id)
+
+    run.config['dilation'] = 1
+
+    return run
 
 
 if __name__ == '__main__':

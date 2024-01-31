@@ -160,7 +160,8 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.train_volumes
+            'volumes': self.train_volumes,
+            'set': 'train'
         }
 
         dataset_train = md.SegSubDataset(args)
@@ -179,7 +180,8 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.val_volumes
+            'volumes': self.val_volumes,
+            'set': 'val'
         }
 
         dataset_val = md.SegSubDataset(args)
