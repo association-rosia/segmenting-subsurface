@@ -28,7 +28,7 @@ class SegSubLightning(pl.LightningModule):
         _, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log('train/loss', loss, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
 
         return loss
 
@@ -36,7 +36,7 @@ class SegSubLightning(pl.LightningModule):
         _, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
