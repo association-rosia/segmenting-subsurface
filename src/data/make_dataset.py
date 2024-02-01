@@ -36,20 +36,23 @@ class SegSubDataset(Dataset):
         image = self.get_image(item)
         label = self.get_label(item)
 
-        inputs = self.processor(
-            images=image,
-            segmentation_maps=label,
-            return_tensors='pt'
-        )
-
-        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-
-        if 'reshaped_input_sizes' in inputs:
-            inputs = self.create_sam_inputs(inputs, label)
-            self.plot_slice(inputs['pixel_values'])
-            self.plot_slice(inputs['labels'])
+        if self.wandb_config['label_type'] == 'instance':
+            inputs = self.create_mask2former_inputs(image, label)
         else:
-            inputs['labels'] = self.process_label(inputs['labels'])
+            inputs = self.processor(
+                images=image,
+                segmentation_maps=label,
+                return_tensors='pt'
+            )
+
+            inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+
+            if 'reshaped_input_sizes' in inputs:
+                inputs = self.create_sam_inputs(inputs, label)
+                self.plot_slice(inputs['pixel_values'])
+                self.plot_slice(inputs['labels'])
+            else:
+                inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
 
@@ -62,6 +65,20 @@ class SegSubDataset(Dataset):
         inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
 
         return inputs
+    
+    def create_mask2former_inputs(self, image, label):
+        label = self.process_label(label)
+        instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        inputs = self.processor(
+            images=image,
+            segmentation_maps=label,
+            instance_id_to_semantic_id=instance_id_to_semantic_id,
+            return_tensors='pt'
+        )
+        
+        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
+        
+        return inputs        
 
     def get_slices(self):
         dims = self.wandb_config['dim'].split(',')
@@ -148,7 +165,6 @@ class SegSubDataset(Dataset):
 
     def process_label(self, label):
         label_type = self.wandb_config['label_type']
-
         if label_type == 'border':
             label = self.get_border_label(label)
         elif label_type == 'layer':
@@ -187,9 +203,13 @@ class SegSubDataset(Dataset):
         return binary_label
 
     def get_instance_label(self, label):
-        label = label - label.min()
+        instance_label = np.full(label.shape, np.nan)
+        old_labels = np.unique(label)
+        new_labels = range(len(old_labels))
+        for old_label, new_label in zip(old_labels, new_labels):
+            instance_label = np.where(label == old_label, new_label, instance_label)
 
-        return label
+        return instance_label
 
     def plot_slice(self, slice):
         ax = plt.subplot()
@@ -204,6 +224,23 @@ class SegSubDataset(Dataset):
         plt.colorbar(im, cax=cax)
 
         plt.show()
+
+
+def collate_fn(batch):
+    pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+    pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
+    class_labels = [el[1]['class_labels'] for el in batch]
+    mask_labels = [el[1]['mask_labels'] for el in batch]
+    slices = [el[0] for el in batch]
+
+    inputs = {
+        'pixel_values': pixel_values,
+        'pixel_mask': pixel_mask,
+        'class_labels': class_labels,
+        'mask_labels': mask_labels
+    }
+
+    return slices, inputs
 
 
 def get_volumes(config, set):

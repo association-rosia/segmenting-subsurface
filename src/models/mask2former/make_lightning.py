@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-import torchmetrics as tm
+import torch
 from transformers import Mask2FormerForUniversalSegmentation
 
 import src.data.make_dataset as md
@@ -18,8 +18,6 @@ class SegSubLightning(pl.LightningModule):
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
-        
-        self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
         outputs = self.model(**inputs)
@@ -39,8 +37,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True)
-        self.metrics.update(outputs['masks_queries_logits'], inputs['mask_labels'])
-        
+
         if batch_idx == 0:
             self.log_image(inputs, outputs)
 
@@ -48,8 +45,10 @@ class SegSubLightning(pl.LightningModule):
     
     def log_image(self, inputs, outputs):
         pixel_values = inputs['pixel_values'][0][0]
-        outputs = self.processor.post_process_instance_segmentation(outputs)[0].numpy(force=True)
-        ground_truth = inputs['mask_labels'][0].numpy(force=True)
+        outputs = self.processor.post_process_instance_segmentation(outputs)
+        outputs = outputs[0]['segmentation'].numpy(force=True)
+        ground_truth = self.get_original_mask(inputs['mask_labels'][0])
+        ground_truth = ground_truth.numpy(force=True)
 
         wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
@@ -61,42 +60,30 @@ class SegSubLightning(pl.LightningModule):
                 }
             })})
         
-    def on_validation_epoch_end(self):
-        metrics = self.metrics.compute()
-        self.log_dict(metrics, on_epoch=True, sync_dist=True)
-        self.metrics.reset()
+    def get_original_mask(self, masks):
+        output_mask = torch.zeros_like(masks[0])
+
+        # Parcourez les tensors masques binaires empilés
+        for index, mask in enumerate(masks):
+            # Trouvez les indices où le masque est True
+            true_indices = torch.nonzero(mask, as_tuple=False)
+            
+            # Mettez à jour le tensor de sortie avec les indices correspondants
+            output_mask[true_indices[:, 0], true_indices[:, 1]] = index + 1
+        
+        return output_mask
 
     def configure_optimizers(self):
         optimizer = AdamW(self.model.parameters(), lr=self.wandb_config['lr'])
 
         return optimizer
-    
-    def configure_metrics(self):
-        num_labels = self.wandb_config['num_labels']
-
-        if num_labels == 1:
-            metrics = tm.MetricCollection({
-                'val/dice': tm.Dice(),
-                'val/iou': tm.classification.BinaryJaccardIndex()
-            })
-        elif num_labels > 1:
-            metrics = tm.MetricCollection({
-                'val/dice': tm.Dice(num_classes=num_labels, average='macro'),
-                'val/iou': tm.JaccardIndex(task='multiclass', num_classes=num_labels),
-            })
-        else:
-            raise ValueError(f'Invalid num_labels: {num_labels}')
-
-        return metrics
-
 
     def train_dataloader(self):
         args = {
-            'config': self.args['config'],
-            'processor': self.args['processor'],
-            'set': 'train',
-            'volumes': self.args['train_volumes'],
-            'dim': self.args['wandb'].dim
+            'config': self.config,
+            'wandb_config': self.wandb_config,
+            'processor': self.processor,
+            'volumes': self.train_volumes
         }
 
         dataset_train = md.SegSubDataset(args)
@@ -107,7 +94,8 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb_config['num_workers'],
             shuffle=True,
             drop_last=True,
-            pin_memory=True
+            pin_memory=True,
+            collate_fn=md.collate_fn
         )
 
     def val_dataloader(self):
@@ -126,7 +114,8 @@ class SegSubLightning(pl.LightningModule):
             num_workers=self.wandb_config['num_workers'],
             shuffle=False,
             drop_last=True,
-            pin_memory=True
+            pin_memory=True,
+            collate_fn=md.collate_fn
         )
 
 
