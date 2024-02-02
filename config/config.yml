@@ -14,7 +14,7 @@ path:
   reports:
     root: 'reports'
     figures: 'reports/figures'
-  submissions:
+  sumbmissions:
     root: 'submissions'
 
 wandb:
@@ -22,5 +22,7 @@ wandb:
   project: 'segmenting-subsurface'
 
 data:
+  min: -1215.0
+  max: 1930.0
   mean: 0.3865
   std: 0.03485
