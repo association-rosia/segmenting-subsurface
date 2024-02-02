@@ -6,7 +6,7 @@ from tqdm import tqdm
 import torchvision.transforms.functional as tvF
 import torch.nn.functional as tF
 
-import src.models.segformer.make_lightning as segformer_ml
+import src.models.segformer.make_lightning as ml
 import src.data.make_dataset as md
 from multiprocessing import Process
 
@@ -61,7 +61,8 @@ def split_list_volume(list_volume, nb_split):
     list_volume_split.append(list_volume[sub_len*nb_split-1:])
     
     return list_volume_split
-    
+
+
 def make_mask(config, device, list_volume, run, path_split):
     segformer_model = load_segformer_model(config, run, device)
 
@@ -84,9 +85,10 @@ def make_mask(config, device, list_volume, run, path_split):
     def postprocess(binary_mask: torch.Tensor, shape):
         binary_mask = torch.moveaxis(binary_mask, 1, 2)
         binary_mask = tF.interpolate(binary_mask.unsqueeze(dim=1), size=shape[1:], mode="bilinear", align_corners=False)
+        binary_mask = tF.sigmoid(binary_mask) > 0.5
         binary_mask = binary_mask.squeeze(dim=1).numpy(force=True)
         
-        return binary_mask
+        return binary_mask.astype(np.bool_)
 
     with torch.no_grad():
         for volume_path in tqdm(list_volume):
@@ -106,7 +108,7 @@ def make_mask(config, device, list_volume, run, path_split):
 def load_segformer_model(config, run, device):
     train_volumes, val_volumes = md.get_training_volumes(config, run.config)
     processor = utils.get_processor(config, run.config)
-    model = segformer_ml.get_model(run.config)
+    model = ml.get_model(run.config)
 
     args = {
         'config': config,
@@ -118,7 +120,7 @@ def load_segformer_model(config, run, device):
     }
     
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
-    lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=device, args=args)
+    lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=device, args=args)
     
     return lightning.to(dtype=torch.float16)
    
