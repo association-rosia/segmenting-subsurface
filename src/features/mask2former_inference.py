@@ -89,7 +89,10 @@ class Mask2formerInference:
             f"{self.run.name}-{self.run.id}",
         )
         path = os.path.join(path, volume_name)
-        path.replace('seismic', 'instance_mask')
+        if self.split == 'train':
+            path.replace('seismic', 'instance_mask')
+        else:
+            path.replace('vol', 'imask')
         
         return path
     
