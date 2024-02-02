@@ -1,12 +1,15 @@
 import os
-import wandb
-import torch
+import warnings
+
 import pytorch_lightning as pl
+import torch
+import wandb
 
 import make_lightning as ml
 import src.data.make_dataset as md
 from src import utils
 
+warnings.filterwarnings('ignore')
 torch.set_float32_matmul_precision('medium')
 
 
