@@ -40,7 +40,7 @@ def get_trainer(config):
             logger=pl.loggers.WandbLogger(),
             callbacks=[checkpoint_callback],
             devices=1,
-            precision='16-mixed',
+            precision='16',
             limit_train_batches=5,
             limit_val_batches=5
         )
