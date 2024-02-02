@@ -10,8 +10,6 @@ import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from src import utils
@@ -217,9 +215,26 @@ class SegSubDataset(Dataset):
         old_labels = np.unique(label)
         new_labels = range(len(old_labels))
         for old_label, new_label in zip(old_labels, new_labels):
-            label = np.where(label == old_label, new_label, instance_label)
+            label = np.where(label == old_label, new_label, label)
 
         return label
+    
+
+def collate_fn(batch):
+    pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
+    pixel_mask = torch.stack([el[1]['pixel_mask'] for el in batch])
+    class_labels = [el[1]['class_labels'] for el in batch]
+    mask_labels = [el[1]['mask_labels'] for el in batch]
+    slices = [el[0] for el in batch]
+
+    inputs = {
+        'pixel_values': pixel_values,
+        'pixel_mask': pixel_mask,
+        'class_labels': class_labels,
+        'mask_labels': mask_labels
+    }
+
+    return slices, inputs
 
 
 def get_volumes(config, set):
