@@ -71,6 +71,7 @@ class SegSubDataset(Dataset):
     def create_mask2former_inputs(self, image, label):
         label = self.process_label(label)
         instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+
         inputs = self.processor(
             images=image,
             segmentation_maps=label,
