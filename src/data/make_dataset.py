@@ -59,11 +59,16 @@ class SegSubDataset(Dataset):
 
     def create_sam_inputs(self, inputs, label):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
-        inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
-        inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
-        input_points_coord = torch.argwhere(inputs['labels']).tolist()
-        input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
-        inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+        if 'labels' in inputs:
+            inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+            inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+            input_points_coord = torch.argwhere(inputs['labels']).tolist()
+            input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+            inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+            if 'reshaped_input_sizes' in inputs:
+                inputs = self.create_sam_inputs(inputs, label)
 
         return inputs
 
@@ -116,7 +121,7 @@ class SegSubDataset(Dataset):
         segformer_mask = None
 
         if self.wandb_config.get('segformer_id') and self.wandb_config['num_channels_mask'] > 0:
-            data_path = self.config['path']['data']['processed']['train']
+            data_path = self.config['path']['data']['processed'][self.set]
             volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
             path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
             segformer_mask = self.get_slice(path, item, dtype=torch.float32)

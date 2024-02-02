@@ -24,9 +24,8 @@ class MokeModel(nn.Module):
 
 
 def main():
-    segformer_id = '4u9c0boz'
-    mask2former_id = segformer_id
-    segment_anything_id = None
+    mask2former_id = None  # '4u9c0boz'
+    segment_anything_id = 'wgeuew2w'
 
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
@@ -57,30 +56,76 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             inputs = preprocess(inputs)
-            outputs = predict(model, item, inputs)
+
+            # inputs_prompts =
+
+            outputs = predict_sam(model, processor, inputs)
+            # outputs = predict(model, item, inputs)
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
-def predict(model, item, inputs, n=10):
-    device = utils.get_device()
-    inputs_shape = inputs['pixel_values'].shape
-    outputs = torch.zeros((inputs_shape[0], inputs_shape[-2], inputs_shape[-1]), dtype=torch.uint8, device=device)
-    indexes = item['slice'].view(n, 300 // n).tolist()
+def predict_sam(model, processor, inputs):
+    pixel_values = inputs['pixel_values']
 
-    for index in indexes:
-        inputs_index = dict()
-        inputs_index['pixel_values'] = inputs['pixel_values'][index]
-        outputs_index = model(inputs_index)
+    for idx in range(pixel_values.shape[0]):
+        slice = pixel_values[idx]
+        model_input = preprocess_sam(processor, slice)
+        model_output = model.model(**model_input)
+        print()
 
-        if outputs_index.dim() == 4:
-            outputs[index] = (tF.sigmoid(outputs_index).argmax(dim=1)).type(torch.uint8)
-        else:
-            outputs[index] = outputs_index.type(torch.uint8)
+    return inputs
 
-    return outputs
+
+def preprocess_sam(processor, slice, points_per_batch=64):
+    target_size = processor.size['longest_edge']
+    crop_boxes, grid_points, cropped_images, input_labels = processor.generate_crop_boxes(slice, target_size)
+    n_points = grid_points.shape[1]
+    batched_points_list = []
+    input_labels_list = []
+    input_boxes_list = []
+    is_last_list = []
+    pixel_values_list = []
+
+    for i in range(0, n_points, points_per_batch):
+        batched_points = grid_points[:, i: i + points_per_batch, :, :].squeeze(0)
+        labels = input_labels[:, i: i + points_per_batch].squeeze(0)
+        is_last = i == n_points - points_per_batch
+
+        batched_points_list.append(batched_points)
+        input_labels_list.append(labels)
+        input_boxes_list.append(crop_boxes)
+        is_last_list.append(is_last)
+        pixel_values_list.append(slice)
+
+    return {
+        'input_points': torch.stack(batched_points_list, dim=0),
+        'input_labels': torch.stack(input_labels_list).squeeze(),
+        'input_boxes': torch.stack(input_boxes_list).squeeze(),
+        'is_last': is_last_list,
+        'pixel_values': torch.stack(pixel_values_list),
+    }
+
+
+# def predict(model, item, inputs, n=10):
+#     device = utils.get_device()
+#     inputs_shape = inputs['pixel_values'].shape
+#     outputs = torch.zeros((inputs_shape[0], inputs_shape[-2], inputs_shape[-1]), dtype=torch.uint8, device=device)
+#     indexes = item['slice'].view(n, 300 // n).tolist()
+#
+#     for index in indexes:
+#         inputs_index = dict()
+#         inputs_index['pixel_values'] = inputs['pixel_values'][index]
+#         outputs_index = model(inputs_index)
+#
+#         if outputs_index.dim() == 4:
+#             outputs[index] = (tF.sigmoid(outputs_index).argmax(dim=1)).type(torch.uint8)
+#         else:
+#             outputs[index] = outputs_index.type(torch.uint8)
+#
+#     return outputs
 
 
 def preprocess(inputs):
@@ -106,7 +151,7 @@ def unprocess(outputs):
     outputs = tF.interpolate(outputs.unsqueeze(0), size=(100, 300), mode='bilinear', align_corners=False)
     outputs = outputs.squeeze(0)
     outputs = torch.movedim(outputs, 1, 2)
-    outputs = outputs.to(torch.int8)
+    outputs = outputs.to(torch.uint8)
 
     return outputs
 
