@@ -48,8 +48,6 @@ class SegSubDataset(Dataset):
 
             if 'reshaped_input_sizes' in inputs:
                 inputs = self.create_sam_inputs(inputs, label)
-                self.plot_slice(inputs['pixel_values'])
-                self.plot_slice(inputs['labels'])
             else:
                 inputs['labels'] = self.process_label(inputs['labels'])
 
@@ -163,7 +161,6 @@ class SegSubDataset(Dataset):
 
     def get_label(self, item):
         label = None
-
         if self.set != 'test':
             path = item['volume'].replace('seismic', 'horizon_labels')
             label = self.get_slice(path, item, dtype=torch.uint8)
@@ -211,14 +208,14 @@ class SegSubDataset(Dataset):
         return binary_label
 
     def get_instance_label(self, label):
-        label = np.full(label.shape, np.nan)
+        instance_label = np.full(label.shape, np.nan)
         old_labels = np.unique(label)
         new_labels = range(len(old_labels))
         for old_label, new_label in zip(old_labels, new_labels):
-            label = np.where(label == old_label, new_label, label)
+            instance_label = np.where(label == old_label, new_label, instance_label)
 
-        return label
-    
+        return instance_label
+
 
 def collate_fn(batch):
     pixel_values = torch.stack([el[1]['pixel_values'] for el in batch])
@@ -344,7 +341,7 @@ if __name__ == '__main__':
 
     config = utils.get_config()
     # compute_image_mean_std(config)
-    wandb_config = utils.init_wandb('segment_anything.yml')
+    wandb_config = utils.init_wandb('mask2former.yml')
 
     model = sam_ml.get_model(wandb_config)
     processor = utils.get_processor(config, wandb_config)
