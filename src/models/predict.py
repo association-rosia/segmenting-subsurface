@@ -50,8 +50,6 @@ def main():
             save_path = get_save_path(item, submission_path)
             inputs = preprocess(inputs)
             outputs = predict_mask2former(m2f_lightning, m2f_processor, inputs)
-            print(outputs.shape)
-            break
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
 
