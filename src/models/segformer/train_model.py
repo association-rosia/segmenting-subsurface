@@ -1,8 +1,5 @@
 import os
-import sys
-
-sys.path.append(os.curdir)
-
+import wandb
 import torch
 import pytorch_lightning as pl
 
@@ -15,14 +12,14 @@ torch.set_float32_matmul_precision('medium')
 
 def main():
     config = utils.get_config()
-    wandb = utils.init_wandb('segformer.yml')
-    trainer = get_trainer(config, wandb)
-    lightning = get_lightning(config, wandb)
+    wandb_config = utils.init_wandb('segformer.yml')
+    trainer = get_trainer(config)
+    lightning = get_lightning(config, wandb_config)
     trainer.fit(model=lightning)
     wandb.finish()
 
 
-def get_trainer(config, wandb):
+def get_trainer(config):
     os.makedirs(config['path']['models']['root'], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         save_top_k=1,
@@ -55,13 +52,14 @@ def get_trainer(config, wandb):
     return trainer
 
 
-def get_lightning(config, wandb):
-    train_volumes, val_volumes = md.get_training_volumes(config, wandb)
-    processor, model = ml.get_processor_model(config, wandb)
+def get_lightning(config, wandb_config):
+    train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
+    processor = utils.get_processor(config, wandb_config)
+    model = ml.get_model(wandb_config)
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb_config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,

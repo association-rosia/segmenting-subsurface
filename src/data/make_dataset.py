@@ -10,6 +10,8 @@ import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from src import utils
@@ -34,25 +36,26 @@ class SegSubDataset(Dataset):
         item = self.slices[idx]
         image = self.get_image(item)
         label = self.get_label(item)
-        inputs = self.get_inputs(image, label)
 
-        return item, inputs
+        if self.wandb_config['label_type'] == 'instance':
+            inputs = self.create_mask2former_inputs(image, label)
+        else:
+            inputs = self.processor(
+                images=image,
+                segmentation_maps=label,
+                return_tensors='pt'
+            )
 
-    def get_inputs(self, image, label):
-        if self.set == 'train' or self.set == 'val':
-            inputs = self.processor(images=image, segmentation_maps=label, return_tensors='pt')
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
             if 'reshaped_input_sizes' in inputs:
                 inputs = self.create_sam_inputs(inputs, label)
+                self.plot_slice(inputs['pixel_values'])
+                self.plot_slice(inputs['labels'])
             else:
                 inputs['labels'] = self.process_label(inputs['labels'])
 
-        else:
-            inputs = self.processor(images=image, return_tensors='pt')
-            inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-
-        return inputs
+        return item, inputs
 
     def create_sam_inputs(self, inputs, label):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
@@ -61,6 +64,20 @@ class SegSubDataset(Dataset):
         input_points_coord = torch.argwhere(inputs['labels']).tolist()
         input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
         inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+        return inputs
+
+    def create_mask2former_inputs(self, image, label):
+        label = self.process_label(label)
+        instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        inputs = self.processor(
+            images=image,
+            segmentation_maps=label,
+            instance_id_to_semantic_id=instance_id_to_semantic_id,
+            return_tensors='pt'
+        )
+
+        inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
         return inputs
 
@@ -191,7 +208,11 @@ class SegSubDataset(Dataset):
         return binary_label
 
     def get_instance_label(self, label):
-        label = label - label.min()
+        label = np.full(label.shape, np.nan)
+        old_labels = np.unique(label)
+        new_labels = range(len(old_labels))
+        for old_label, new_label in zip(old_labels, new_labels):
+            label = np.where(label == old_label, new_label, instance_label)
 
         return label
 

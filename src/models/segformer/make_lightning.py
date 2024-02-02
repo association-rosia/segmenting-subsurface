@@ -47,7 +47,7 @@ class SegSubLightning(pl.LightningModule):
         return upsampled_logits
 
     def training_step(self, batch):
-        item, inputs = batch
+        _, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('train/loss', loss, on_epoch=True, sync_dist=True)
@@ -55,7 +55,7 @@ class SegSubLightning(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        item, inputs = batch
+        _, inputs = batch
         outputs = self.forward(inputs)
         loss = self.criterion(outputs, inputs['labels'])
         self.log('val/loss', loss, on_epoch=True, sync_dist=True)
@@ -102,10 +102,10 @@ class SegSubLightning(pl.LightningModule):
             criterion = losses.DiceLoss(num_labels=num_labels)
         elif self.wandb_config['criterion'] == 'DiceCrossEntropyLoss':
             criterion = losses.DiceCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
-        elif self.wandb_config['criterion'] == 'JaccardCrossEntropyLoss':
+        elif self.wandb_config['criterion'] in ['JaccardCrossEntropyLoss', 'JaccardBCEWithLogitsLoss']:
             criterion = losses.JaccardCrossEntropyLoss(num_labels=num_labels, class_weights=class_weights)
         else:
-            raise ValueError(f'Unknown criterion: {self.wandb_config["criterion"]}')
+            raise ValueError(f"Unknown criterion: {self.wandb_config['criterion']}")
 
         return criterion
 
