@@ -1,6 +1,5 @@
 import pytorch_lightning as pl
 import torch
-import torchmetrics as tm
 import wandb
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
@@ -19,7 +18,6 @@ class SegSubLightning(pl.LightningModule):
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
-        self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
         outputs = self.model(**inputs)
@@ -39,7 +37,6 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         self.log('val/loss', loss, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
-        self.metrics.update(1 - loss)
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
@@ -75,22 +72,10 @@ class SegSubLightning(pl.LightningModule):
 
         return output_mask
 
-    def on_validation_epoch_end(self):
-        metrics = self.metrics.compute()
-        self.log_dict(metrics, on_epoch=True, sync_dist=True)
-        self.metrics.reset()
-
     def configure_optimizers(self):
         optimizer = AdamW(self.model.parameters(), lr=self.wandb_config['lr'])
 
         return optimizer
-
-    def configure_metrics(self):
-        metrics = tm.MetricCollection({
-            'val/dice': tm.aggregation.MeanMetric(),
-        })
-
-        return metrics
 
     def train_dataloader(self):
         args = {
@@ -153,11 +138,8 @@ if __name__ == '__main__':
 
     config = utils.get_config()
     wandb_config = utils.init_wandb(yml_file='mask2former.yml')
-
     processor = utils.get_processor(config, wandb_config)
-
     model = get_model(wandb_config)
-
     test_volumes = md.get_volumes(config, set='test')
     train_volumes = md.get_volumes(config, set='train')
 
