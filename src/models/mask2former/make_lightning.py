@@ -22,6 +22,9 @@ class SegSubLightning(pl.LightningModule):
         self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
+
+        print(inputs)
+
         outputs = self.model(**inputs)
 
         return outputs
