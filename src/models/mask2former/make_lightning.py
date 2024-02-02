@@ -28,7 +28,7 @@ class SegSubLightning(pl.LightningModule):
         _, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('train/loss', loss, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
+        self.log('train/loss', loss, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
 
         return loss
 
@@ -36,7 +36,7 @@ class SegSubLightning(pl.LightningModule):
         _, inputs = batch
         outputs = self.forward(inputs)
         loss = outputs['loss']
-        self.log('val/loss', loss, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
+        self.log('val/loss', loss, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
@@ -67,7 +67,6 @@ class SegSubLightning(pl.LightningModule):
         for index, mask in enumerate(masks):
             # Trouvez les indices où le masque est True
             true_indices = torch.nonzero(mask, as_tuple=False)
-            
             # Mettez à jour le tensor de sortie avec les indices correspondants
             output_mask[true_indices[:, 0], true_indices[:, 1]] = index + 1
         
@@ -83,7 +82,8 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.train_volumes
+            'volumes': self.train_volumes,
+            'set': 'train'
         }
 
         dataset_train = md.SegSubDataset(args)
@@ -103,7 +103,8 @@ class SegSubLightning(pl.LightningModule):
             'config': self.config,
             'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.val_volumes
+            'volumes': self.val_volumes,
+            'set': 'val'
         }
 
         dataset_val = md.SegSubDataset(args)
@@ -123,6 +124,9 @@ def get_model(wandb_config):
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb_config['model_id'],
         num_labels=wandb_config['num_labels'],
+        class_weight=0,
+        mask_weight=0,
+        dice_weight=1,
         ignore_mismatched_sizes=True
     )
 
