@@ -1,10 +1,12 @@
 import os
+import random
 import shutil
 import warnings
 
 import numpy as np
 import torch
 import torch.nn.functional as tF
+import torchvision.transforms.functional as tvF
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -49,11 +51,28 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             inputs = preprocess(inputs)
-            outputs = predict_mask2former(m2f_lightning, m2f_processor, inputs)
+            # outputs = predict_mask2former(m2f_lightning, m2f_processor, inputs)
+            outputs = torch.from_numpy(np.load('data/processed/sub_vol_40.npy', allow_pickle=True))
+
+            for i in range(outputs.shape[0]):
+                output = outputs[i]
+                print()
+
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
+
+
+def create_input_points(m2f_output):
+    inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
+    inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+    inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+    input_points_coord = torch.argwhere(inputs['labels']).tolist()
+    input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+    inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+    return inputs
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, inputs):

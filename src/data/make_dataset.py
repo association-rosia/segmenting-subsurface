@@ -57,14 +57,13 @@ class SegSubDataset(Dataset):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
 
         if self.set == 'train':
-            inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+            # inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
+            inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (1024, 1024)).squeeze())
             inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
             input_points_coord = torch.argwhere(inputs['labels']).tolist()
             input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
             inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
-
-            if 'reshaped_input_sizes' in inputs:
-                inputs = self.create_sam_inputs(inputs, label)
+            inputs['labels'] = tvF.resize(label.unsqueeze(0), (256, 256)).squeeze()
 
         return inputs
 
@@ -345,7 +344,7 @@ if __name__ == '__main__':
 
     config = utils.get_config()
     # compute_image_mean_std(config)
-    wandb_config = utils.init_wandb('mask2former.yml')
+    wandb_config = utils.init_wandb('segment_anything.yml')
 
     model = sam_ml.get_model(wandb_config)
     processor = utils.get_processor(config, wandb_config)
