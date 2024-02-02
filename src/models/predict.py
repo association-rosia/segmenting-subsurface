@@ -61,6 +61,7 @@ def main():
 def predict_mask2former(m2f_lightning, m2f_processor, inputs):
     outputs = m2f_lightning(inputs)
     outputs = m2f_processor.post_process_instance_segmentation(outputs)
+    outputs = torch.stack([slice['segmentation'] for slice in outputs])
 
     return outputs
 
