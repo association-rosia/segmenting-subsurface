@@ -139,9 +139,9 @@ def get_model(wandb_config):
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb_config['model_id'],
         num_labels=wandb_config['num_labels'],
-        class_weight=0,
-        mask_weight=0,
-        dice_weight=1,
+        class_weight=0.0,
+        mask_weight=0.0,
+        dice_weight=1.0,
         ignore_mismatched_sizes=True
     )
 
