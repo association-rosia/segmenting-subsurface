@@ -49,13 +49,20 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             inputs = preprocess(inputs)
-            outputs = m2f_lightning(inputs)
+            outputs = predict_mask2former(m2f_lightning, m2f_processor, inputs)
             print(outputs)
             break
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
+
+
+def predict_mask2former(m2f_lightning, m2f_processor, inputs):
+    outputs = m2f_lightning(inputs)
+    outputs = m2f_processor.post_process_instance_segmentation(outputs)
+
+    return outputs
 
 
 def preprocess(inputs):
