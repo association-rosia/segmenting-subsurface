@@ -1,12 +1,13 @@
 import pytorch_lightning as pl
+import torch
+import torchmetrics as tm
+import wandb
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-import torch
 from transformers import Mask2FormerForUniversalSegmentation
 
 import src.data.make_dataset as md
 from src import utils
-import wandb
 
 
 class SegSubLightning(pl.LightningModule):
@@ -18,6 +19,7 @@ class SegSubLightning(pl.LightningModule):
         self.processor = args['processor']
         self.train_volumes = args['train_volumes']
         self.val_volumes = args['val_volumes']
+        self.metrics = self.configure_metrics()
 
     def forward(self, inputs):
         outputs = self.model(**inputs)
@@ -37,12 +39,13 @@ class SegSubLightning(pl.LightningModule):
         outputs = self.forward(inputs)
         loss = outputs['loss']
         self.log('val/loss', loss, on_epoch=True, sync_dist=True, batch_size=self.wandb_config['batch_size'])
+        self.metrics.update(1 - loss)
 
         if batch_idx == 0:
             self.log_image(inputs, outputs)
 
         return loss
-    
+
     def log_image(self, inputs, outputs):
         pixel_values = inputs['pixel_values'][0][0]
         outputs = self.processor.post_process_instance_segmentation(outputs)
@@ -59,7 +62,7 @@ class SegSubLightning(pl.LightningModule):
                     'mask_data': ground_truth
                 }
             })})
-        
+
     def get_original_mask(self, masks):
         output_mask = torch.zeros_like(masks[0])
 
@@ -69,13 +72,25 @@ class SegSubLightning(pl.LightningModule):
             true_indices = torch.nonzero(mask, as_tuple=False)
             # Mettez à jour le tensor de sortie avec les indices correspondants
             output_mask[true_indices[:, 0], true_indices[:, 1]] = index + 1
-        
+
         return output_mask
+
+    def on_validation_epoch_end(self):
+        metrics = self.metrics.compute()
+        self.log_dict(metrics, on_epoch=True, sync_dist=True)
+        self.metrics.reset()
 
     def configure_optimizers(self):
         optimizer = AdamW(self.model.parameters(), lr=self.wandb_config['lr'])
 
         return optimizer
+
+    def configure_metrics(self):
+        metrics = tm.MetricCollection({
+            'val/dice': tm.aggregation.MeanMetric(),
+        })
+
+        return metrics
 
     def train_dataloader(self):
         args = {
@@ -131,7 +146,6 @@ def get_model(wandb_config):
     )
 
     return model
-
 
 
 if __name__ == '__main__':
