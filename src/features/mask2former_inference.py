@@ -124,7 +124,10 @@ class Mask2formerInference:
             self.run.config['segformer_id'],
         )
         binary_mask_path = os.path.join(path, volume_name)
-        binary_mask_path = binary_mask_path.replace('seismic', 'binary_mask')
+        if self.split == 'train':
+            binary_mask_path = binary_mask_path.replace('seismic', 'binary_mask')
+        else:
+            binary_mask_path = binary_mask_path.replace('vol', 'bmask')
         binary_mask = np.load(binary_mask_path, allow_pickle=True)
         
         return binary_mask
