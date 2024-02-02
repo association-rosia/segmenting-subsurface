@@ -56,7 +56,7 @@ class SegSubDataset(Dataset):
     def create_sam_inputs(self, inputs, label):
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
 
-        if 'labels' in inputs:
+        if self.set == 'train':
             inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
             inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
             input_points_coord = torch.argwhere(inputs['labels']).tolist()
@@ -69,8 +69,11 @@ class SegSubDataset(Dataset):
         return inputs
 
     def create_mask2former_inputs(self, image, label):
-        label = self.process_label(label)
-        instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        if self.set == 'train':
+            label = self.process_label(label)
+            instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        else:
+            instance_id_to_semantic_id = None
 
         inputs = self.processor(
             images=image,

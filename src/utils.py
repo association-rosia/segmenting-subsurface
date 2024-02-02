@@ -7,6 +7,7 @@ import yaml
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from transformers import AutoImageProcessor
 
+import src.models.mask2former.make_lightning as mask2former_ml
 import src.models.segformer.make_lightning as segformer_ml
 import src.models.segment_anything.make_lightning as segment_anything_ml
 
@@ -16,7 +17,7 @@ def get_device():
     if torch.cuda.is_available():
         device = 'cuda'
     elif torch.backends.mps.is_available():
-        device = 'cpu'
+        device = 'mps'
 
     return device
 
@@ -92,7 +93,7 @@ def get_run(run_id: str):
     return run
 
 
-def load_segformer_model(config, run):
+def load_segformer(config, run):
     processor = get_processor(config, run.config)
     model = segformer_ml.get_model(run.config)
 
@@ -107,6 +108,29 @@ def load_segformer_model(config, run):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+
+    device = get_device()
+    lightning = lightning.to(torch.float16)
+    lightning = lightning.to(device)
+
+    return lightning
+
+
+def load_mask2former(config, run):
+    processor = get_processor(config, run.config)
+    model = mask2former_ml.get_model(run.config)
+
+    args = {
+        'config': config,
+        'wandb_config': run.config,
+        'model': model,
+        'processor': processor,
+        'train_volumes': None,
+        'val_volumes': None
+    }
+
+    path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
+    lightning = mask2former_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     device = get_device()
     lightning = lightning.to(torch.float16)
