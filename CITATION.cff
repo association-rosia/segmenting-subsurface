@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "REBERGA"
+  given-names: "Louis"
+- family-names: "URGELL"
+  given-names: "Baptiste"
+title: "Segmenting Subsurface"
+publisher: "Github"
+year: "2024"
+version: 1.0
+date-released: 2024-2-10
+url: "https://github.com/association-rosia/segmenting-subsurface"
+data: "Every Layer, Everywhere, All at Once: Segmenting Subsurface"
