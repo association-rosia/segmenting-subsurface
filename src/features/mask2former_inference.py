@@ -27,13 +27,13 @@ def main(run_id):
 
 
 def multiprocess_make_mask(config, run, split):
-    list_volume = md.get_volumes(config, set=split),
+    list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
     
     list_process = [
         Process(target=Mask2formerInference(
                     config=config,
-                    device=torch.cuda.device(i),
+                    cuda_idx=i,
                     list_volume=sub_list_volume,
                     run=run,
                     split=split
@@ -49,14 +49,14 @@ def multiprocess_make_mask(config, run, split):
 def split_list_volume(list_volume, nb_split):
     sub_len = len(list_volume) // nb_split
     list_volume_split = [list_volume[sub_len*i:sub_len*(i+1)] for i in range(nb_split-1)]
-    list_volume_split.append(list_volume[sub_len*nb_split-1:])
+    list_volume_split.append(list_volume[sub_len*(nb_split-1):])
     
     return list_volume_split
 
 class Mask2formerInference:
-    def __init__(self, config, device, list_volume, run, split) -> None:
+    def __init__(self, config, cuda_idx, list_volume, run, split) -> None:
         self.config = config
-        self.device = device
+        self.device = f'cuda:{cuda_idx}'
         self.list_volume = list_volume
         self.run = run
         self.split = split
@@ -66,7 +66,7 @@ class Mask2formerInference:
         self.processor = utils.get_processor(config, run.config)
         
     def __call__(self):
-        model = load_model(self.config, self.run, self.device)
+        model = self.load_model()
         
         with torch.no_grad():
             for volume_path in tqdm(self.list_volume):
@@ -79,7 +79,7 @@ class Mask2formerInference:
                 binary_mask = self.load_binary_mask(volume_name)
                 shape = volume.shape
                 inputs = self.preprocess(volume, binary_mask)
-                outputs = model(**inputs)
+                outputs = model(inputs)
                 instance_mask = self.postprocess(outputs, shape)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
@@ -90,9 +90,9 @@ class Mask2formerInference:
         )
         path = os.path.join(path, volume_name)
         if self.split == 'train':
-            path.replace('seismic', 'instance_mask')
+            path = path.replace('seismic', 'instance_mask')
         else:
-            path.replace('vol', 'imask')
+            path = path.replace('vol', 'imask')
         
         return path
     
@@ -101,9 +101,12 @@ class Mask2formerInference:
         volume = np.moveaxis(volume, 1, 2)
         volume = torch.from_numpy(volume).unsqueeze(1)
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
+        volume = volume.squeeze()
         binary_mask = np.moveaxis(binary_mask, 1, 2)
+        binary_mask = torch.from_numpy(binary_mask)
         
         images = self.build_images(volume, binary_mask)
+        images = torch.unbind(images, dim=0)
         inputs = self.processor(images=images, return_tensors='pt')
         inputs = inputs.to(device=self.device, dtype=torch.float16)
         
@@ -116,7 +119,7 @@ class Mask2formerInference:
         instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode="bilinear", align_corners=False)
         instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
         
-        return instance_mask
+        return instance_mask.astype(np.int16)
 
     def load_binary_mask(self, volume_name):
         path = os.path.join(
@@ -149,24 +152,24 @@ class Mask2formerInference:
 
         return images
 
-def load_model(config, run, device):
-    train_volumes, val_volumes = md.get_training_volumes(config, run.config)
-    processor = utils.get_processor(config, run.config)
-    model = ml.get_model(run.config)
+    def load_model(self):
+        train_volumes, val_volumes = md.get_training_volumes(self.config, self.run.config)
+        processor = utils.get_processor(self.config, self.run.config)
+        model = ml.get_model(self.run.config)
 
-    args = {
-        'config': config,
-        'wandb_config': run.config,
-        'model': model,
-        'processor': processor,
-        'train_volumes': train_volumes,
-        'val_volumes': val_volumes
-    }
-    
-    path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
-    lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=device, args=args)
-    
-    return lightning.to(dtype=torch.float16)
+        args = {
+            'config': self.config,
+            'wandb_config': self.run.config,
+            'model': model,
+            'processor': processor,
+            'train_volumes': train_volumes,
+            'val_volumes': val_volumes
+        }
+        
+        path_checkpoint = os.path.join(self.config['path']['models']['root'], f'{self.run.name}-{self.run.id}.ckpt')
+        lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=self.device, args=args)
+        
+        return lightning.to(dtype=torch.float16)
    
  
 if __name__ == '__main__':
