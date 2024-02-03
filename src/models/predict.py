@@ -74,9 +74,12 @@ def create_input_points(m2f_output):
 
     for i in range(m2f_output.shape[0]):
         utils.plot_slice(m2f_output[i])
-        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=3)
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
+        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
         opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
         utils.plot_slice(opened_m2f_output_i)
+        counts = torch.unique(opened_m2f_output_i, return_counts=True)
+        print(counts)
 
     return input_points
 
