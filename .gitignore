@@ -6,7 +6,6 @@
 **/wandb
 **/.ipynb_checkpoints
 /reports
-**/models
 /submissions
 **.egg-info
 **.log

@@ -119,7 +119,6 @@ class SegSubDataset(Dataset):
             volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
             path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
             segformer_mask = self.get_slice(path, item, dtype=torch.float32)
-            segformer_mask = tF.sigmoid(segformer_mask) > 0.5
 
         return segformer_mask
 
