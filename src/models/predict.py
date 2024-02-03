@@ -1,4 +1,5 @@
 import os
+import random
 import shutil
 import warnings
 
@@ -18,7 +19,7 @@ warnings.filterwarnings('ignore')
 
 def main():
     mask2former_id = '3xg8r6lz'
-    segment_anything_id = 'wgeuew2w'
+    segment_anything_id = '2snz8a1d'
 
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
@@ -53,11 +54,8 @@ def main():
             m2f_inputs = preprocess(inputs)
             # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
             m2f_outputs = get_m2f_outputs_example()
-
-            for i in range(m2f_outputs.shape[0]):
-                m2f_output = m2f_outputs[i]
-                sam_input_points = create_input_points(m2f_output)
-                print()
+            sam_input_points = create_sam_input_points(m2f_outputs, m2f_inputs, sam_run)
+            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points)
 
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
@@ -65,30 +63,52 @@ def main():
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
-def create_input_points(m2f_output):
-    indexes = [index for index in torch.unique(m2f_output).tolist() if index != 255]
-    m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
-    m2f_output = torch.permute(m2f_output, (2, 0, 1))
-    m2f_output = m2f_output[indexes]
-    m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
+def create_sam_input_points(m2f_outputs, m2f_inputs, sam_run):
+    sam_input_points = []
 
-    for i in range(m2f_output.shape[0]):
-        utils.plot_slice(m2f_output[i])
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
-        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
-        opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
-        utils.plot_slice(opened_m2f_output_i)
-        counts = torch.unique(opened_m2f_output_i, return_counts=True)
-        print(counts)
+    # add multiprocessing
+    for i in tqdm(range(m2f_outputs.shape[0])):
+        m2f_output = m2f_outputs[i]
+        indexes = torch.unique(m2f_output).tolist()
 
-    return input_points
+        if len(indexes) == 1:
+            utils.plot_slice(m2f_inputs['pixel_values'][i])
+            utils.plot_slice(m2f_outputs[i])
+            print()
+
+        m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
+        m2f_output = torch.permute(m2f_output, (2, 0, 1))
+        m2f_output = m2f_output[indexes]
+        m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
+
+        input_points = []
+        for i in range(m2f_output.shape[0]):
+            kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
+            opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
+            opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
+
+            valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
+            if valid_label:
+                # utils.plot_slice(opened_m2f_output_i)
+                input_points_coord = torch.argwhere(opened_m2f_output_i).tolist()
+                input_points_coord = random.choices(input_points_coord, k=sam_run.config['num_input_points'])
+                input_points.append(torch.tensor(input_points_coord).unsqueeze(0))
+
+        sam_input_points.append(input_points)
+
+    return sam_input_points
 
 
-def predict_mask2former(m2f_lightning, m2f_processor, inputs):
-    outputs = m2f_lightning(inputs)
+def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
+    outputs = m2f_lightning(m2f_inputs)
     outputs = m2f_processor.post_process_instance_segmentation(outputs)
     outputs = torch.stack([slice['segmentation'] for slice in outputs])
 
+    return outputs
+
+
+def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points):
+    outputs = None
     return outputs
 
 

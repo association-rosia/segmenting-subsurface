@@ -52,7 +52,7 @@ def init_wandb(yml_file):
 
 
 def resize_tensor_2d(tensor, size):
-    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size).squeeze()
+    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size).squeeze(0)
 
     return resized_tensor
 
