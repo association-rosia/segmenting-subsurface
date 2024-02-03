@@ -4,6 +4,7 @@ random_state: 42
 max_epochs: 10
 criterion: 'JaccardCrossEntropyLoss'
 
+#model_id: 'facebook/sam-vit-large'
 model_id: 'facebook/sam-vit-base'
 num_labels: 1
 num_channels: 3

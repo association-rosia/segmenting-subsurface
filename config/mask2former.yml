@@ -3,6 +3,7 @@ dry: false
 random_state: 42
 max_epochs: 10
 
+#model_id: 'facebook/mask2former-swin-large-coco-instance'
 model_id: 'facebook/mask2former-swin-base-coco-instance'
 num_channels: 3
 contrast_factor: 25

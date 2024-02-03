@@ -1,8 +1,8 @@
 import os
-import random
 import shutil
 import warnings
 
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as tF
@@ -50,12 +50,13 @@ def main():
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
-            inputs = preprocess(inputs)
-            # outputs = predict_mask2former(m2f_lightning, m2f_processor, inputs)
-            outputs = torch.from_numpy(np.load('data/processed/sub_vol_40.npy', allow_pickle=True))
+            m2f_inputs = preprocess(inputs)
+            # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            m2f_outputs = get_m2f_outputs_example()
 
-            for i in range(outputs.shape[0]):
-                output = outputs[i]
+            for i in range(m2f_outputs.shape[0]):
+                m2f_output = m2f_outputs[i]
+                sam_input_points = create_input_points(m2f_output)
                 print()
 
             outputs = unprocess(outputs)
@@ -65,14 +66,19 @@ def main():
 
 
 def create_input_points(m2f_output):
-    inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
-    inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
-    inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
-    input_points_coord = torch.argwhere(inputs['labels']).tolist()
-    input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
-    inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+    indexes = [index for index in torch.unique(m2f_output).tolist() if index != 255]
+    m2f_output = tF.one_hot(m2f_output.to(torch.int64))
+    m2f_output = torch.permute(m2f_output, (2, 0, 1))
+    m2f_output = m2f_output[indexes]
+    m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
 
-    return inputs
+    for i in range(m2f_output.shape[0]):
+        utils.plot_slice(m2f_output[i])
+        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=3)
+        opened_m2f_output_i = opened_m2f_output_i.from_numpy()
+        utils.plot_slice(opened_m2f_output_i)
+
+    return input_points
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, inputs):
@@ -141,6 +147,14 @@ def create_path(config, mask2former_id, segment_anything_id):
     os.makedirs(submission_path, exist_ok=True)
 
     return submission_path
+
+
+def get_m2f_outputs_example():
+    m2f_outputs = torch.from_numpy(np.load('data/processed/sub_vol_40.npy', allow_pickle=True))
+    m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
+    m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
+
+    return m2f_outputs
 
 
 if __name__ == '__main__':

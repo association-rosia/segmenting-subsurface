@@ -2,6 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 import torch
+import torchvision.transforms.functional as tvF
 import wandb
 import yaml
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -48,6 +49,12 @@ def init_wandb(yml_file):
     )
 
     return wandb.config
+
+
+def resize_tensor_2d(tensor, size):
+    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size).squeeze()
+
+    return resized_tensor
 
 
 def plot_slice(slice):
