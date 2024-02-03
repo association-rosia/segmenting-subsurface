@@ -163,7 +163,7 @@ def load_segment_anything(config, run):
     lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     device = get_device()
-    lightning = lightning.to(torch.float16)
+    # lightning = lightning.to(torch.float16)
     lightning = lightning.to(device)
 
     return lightning

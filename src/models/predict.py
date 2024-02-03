@@ -53,9 +53,9 @@ def main():
             save_path = get_save_path(item, submission_path)
             m2f_inputs = preprocess(inputs)
             # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            m2f_outputs = get_m2f_outputs_example()
+            m2f_inputs, m2f_outputs = get_m2f_outputs_example(item, m2f_inputs)
             sam_input_points = create_sam_input_points(m2f_outputs, m2f_inputs, sam_run)
-            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points)
+            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points)
 
             outputs = unprocess(outputs)
             save_outputs(outputs, save_path)
@@ -67,36 +67,49 @@ def create_sam_input_points(m2f_outputs, m2f_inputs, sam_run):
     sam_input_points = []
 
     # add multiprocessing
-    for i in tqdm(range(m2f_outputs.shape[0])):
-        m2f_output = m2f_outputs[i]
-        indexes = torch.unique(m2f_output).tolist()
-
-        if len(indexes) == 1:
-            utils.plot_slice(m2f_inputs['pixel_values'][i])
-            utils.plot_slice(m2f_outputs[i])
-            print()
-
-        m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
-        m2f_output = torch.permute(m2f_output, (2, 0, 1))
-        m2f_output = m2f_output[indexes]
-        m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
-
-        input_points = []
-        for i in range(m2f_output.shape[0]):
-            kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
-            opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
-            opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
-
-            valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
-            if valid_label:
-                # utils.plot_slice(opened_m2f_output_i)
-                input_points_coord = torch.argwhere(opened_m2f_output_i).tolist()
-                input_points_coord = random.choices(input_points_coord, k=sam_run.config['num_input_points'])
-                input_points.append(torch.tensor(input_points_coord).unsqueeze(0))
-
+    m2f_outputs_list = [m2f_outputs[i].cpu() for i in range(m2f_outputs.shape[0])]
+    for m2f_output in tqdm(m2f_outputs_list):
+        input_points = extract_input_points(m2f_output, sam_run)
         sam_input_points.append(input_points)
 
     return sam_input_points
+
+
+def extract_input_points(m2f_output, sam_run):
+    indexes = torch.unique(m2f_output).tolist()
+
+    # if len(indexes) == 1:
+    #     utils.plot_slice(m2f_inputs['pixel_values'][i][0])
+    #     utils.plot_slice(m2f_inputs['pixel_values'][i][1])
+    #     utils.plot_slice(m2f_outputs[i])
+    #     print()
+
+    m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
+    m2f_output = torch.permute(m2f_output, (2, 0, 1))
+    m2f_output = m2f_output[indexes]
+    m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
+
+    input_points = []
+    for i in range(m2f_output.shape[0]):
+        kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
+        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
+        opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
+
+        valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
+
+        if valid_label:
+            count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
+
+            if count_1 > 1000:
+                # utils.plot_slice(opened_m2f_output_i)
+                input_points_argw = torch.argwhere(opened_m2f_output_i)
+                input_points_idx = random.sample(range(len(input_points_argw)), k=sam_run.config['num_input_points'])
+                input_points_coord = input_points_argw[input_points_idx]
+                input_points.append(input_points_coord)
+
+    input_points = torch.stack(input_points)
+
+    return input_points
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
@@ -107,9 +120,27 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
     return outputs
 
 
-def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points):
-    outputs = None
-    return outputs
+def predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points):
+    sam_outputs = []
+    sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
+
+    for i, input_points in enumerate(sam_input_points):
+        utils.plot_slice(m2f_inputs['pixel_values'][i])
+        m2f_outputs[i][m2f_outputs[i] == 255] = torch.unique(m2f_outputs[i]).tolist()[-2] + 1
+        utils.plot_slice(m2f_outputs[i])
+        pixel_values = sam_pixel_values[i].unsqueeze(0).to(torch.float32)
+        input_points = input_points.unsqueeze(0).to(torch.float32)
+        outputs = sam_lightning({'pixel_values': pixel_values, 'input_points': input_points})
+
+        # TODO: return predicted IuO and filter on that
+
+        outputs = (tF.sigmoid(outputs).argmax(dim=0)).type(torch.uint8)
+        utils.plot_slice(outputs)
+        sam_outputs.append(outputs)
+
+    sam_outputs = torch.stack(sam_outputs)
+
+    return sam_outputs
 
 
 def preprocess(inputs):
@@ -172,12 +203,16 @@ def create_path(config, mask2former_id, segment_anything_id):
     return submission_path
 
 
-def get_m2f_outputs_example():
-    m2f_outputs = torch.from_numpy(np.load('data/processed/sub_vol_40.npy', allow_pickle=True))
+def get_m2f_outputs_example(item, m2f_inputs, k=3):
+    file_name = item['volume'][0].split('/')[-1].replace('test', 'sub')
+    m2f_outputs = torch.from_numpy(np.load(os.path.join('submissions', 'mask2former', file_name), allow_pickle=True))
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
-    return m2f_outputs
+    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:k]
+    m2f_outputs = m2f_outputs[:k]
+
+    return m2f_inputs, m2f_outputs
 
 
 if __name__ == '__main__':
