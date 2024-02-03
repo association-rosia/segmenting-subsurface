@@ -120,7 +120,13 @@ class SegSubDataset(Dataset):
 
         if self.wandb_config.get('segformer_id') and self.wandb_config['num_channels_mask'] > 0:
             data_path = self.config['path']['data']['processed'][self.set]
-            volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
+
+            volume_file = item['volume'].split('/')[-1]
+            if self.set == 'train':
+                volume_file = volume_file.replace('seismic', 'binary_mask')
+            else:
+                volume_file = volume_file.replace('vol', 'bmask')
+
             path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
             segformer_mask = self.get_slice(path, item, dtype=torch.float32)
 
@@ -189,7 +195,7 @@ class SegSubDataset(Dataset):
     def get_one_hot_label(self, label):
         indexes = torch.unique(label)
         label = torch.permute(tF.one_hot(label.to(torch.int64)), (2, 0, 1))
-        label = label[indexes.tolist()]
+        label = label[indexes.tolist()].to(torch.uint8)
 
         return label
 

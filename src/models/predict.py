@@ -67,7 +67,7 @@ def main():
 
 def create_input_points(m2f_output):
     indexes = [index for index in torch.unique(m2f_output).tolist() if index != 255]
-    m2f_output = tF.one_hot(m2f_output.to(torch.int64))
+    m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
     m2f_output = torch.permute(m2f_output, (2, 0, 1))
     m2f_output = m2f_output[indexes]
     m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
@@ -75,7 +75,7 @@ def create_input_points(m2f_output):
     for i in range(m2f_output.shape[0]):
         utils.plot_slice(m2f_output[i])
         opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=3)
-        opened_m2f_output_i = opened_m2f_output_i.from_numpy()
+        opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
         utils.plot_slice(opened_m2f_output_i)
 
     return input_points
