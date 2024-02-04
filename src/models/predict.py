@@ -155,8 +155,8 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
-    print(sam_pixel_values.dtype)
-    print(sam_input_points.dtype)
+    print(sam_pixel_values.dtype, sam_pixel_values.device)
+    print(sam_input_points.dtype, sam_input_points.device)
 
     sam_outputs = sam_lightning.model(
         pixel_values=sam_pixel_values,
