@@ -14,12 +14,14 @@ from src import utils
 
 def main(run_id):
     config = utils.get_config()
-    run = utils.get_run_config(run_id)
+    run = utils.get_run(run_id)
+
     for split in ['train', 'test']:
         path_split = os.path.join(
             config['path']['data']['processed'][split],
             f"{run.name}-{run.id}",
         )
+
         os.makedirs(path_split, exist_ok=True)
         multiprocess_make_mask(config, run, split)
 
