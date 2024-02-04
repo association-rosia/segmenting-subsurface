@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 import shutil
@@ -51,12 +52,9 @@ def main():
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
-            print('save_path = get_save_path(item, submission_path)')
             m2f_inputs = preprocess(inputs)
-            print('m2f_inputs = preprocess(inputs)')
             # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
             m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
-            print('m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)')
             sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
             print('sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)')
             sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points,
@@ -79,19 +77,19 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(m2f_outputs.shape[0])]
 
-    # num_processes = 23
-    # pool = multiprocessing.Pool(processes=num_processes)
-    #
-    # for args in m2f_args:
-    #     sam_input_points.append(pool.apply_async(extract_input_points, args=args))
-    #
-    # pool.close()
-    # pool.join()
+    num_processes = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=num_processes)
 
     for args in m2f_args:
-        sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+        sam_input_points.append(pool.apply_async(extract_input_points, args=args))
 
-    # sam_input_points = [input_points.get() for input_points in sam_input_points]
+    pool.close()
+    pool.join()
+
+    # for args in m2f_args:
+    #     sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+
+    sam_input_points = [input_points.get() for input_points in sam_input_points]
     max_input_points = max([len(input_points) for input_points in sam_input_points])
     sam_input_points_stack_num = [max_input_points - len(sam_input_points[i]) for i in range(len(sam_input_points))]
 
