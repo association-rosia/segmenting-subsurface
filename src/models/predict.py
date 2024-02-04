@@ -86,7 +86,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     # pool.close()
     # pool.join()
 
-    for args in m2f_args:
+    for args in tqdm(m2f_args):
         sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
 
     sam_input_points = [input_points.get() for input_points in sam_input_points]
