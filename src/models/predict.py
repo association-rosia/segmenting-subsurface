@@ -79,7 +79,7 @@ def split_list_args(args, nb_split):
 
 
 def create_sam_input_points(m2f_outputs, item, sam_run):
-    mp.set_start_method('spawn', force=True)
+    torch.multiprocessing.set_start_method('spawn')
     manager = mp.Manager()
     sam_input_points = manager.list()
 
