@@ -155,27 +155,25 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
-    print(sam_pixel_values.dtype, sam_pixel_values.device)
-    print(sam_input_points.dtype, sam_input_points.device)
+    with torch.no_grad():
+        sam_outputs = sam_lightning.model(
+            pixel_values=sam_pixel_values,
+            input_points=sam_input_points,
+            multimask_output=False
+        )
 
-    sam_outputs = sam_lightning.model(
-        pixel_values=sam_pixel_values,
-        input_points=sam_input_points,
-        multimask_output=False
-    )
+        for i in range(len(sam_outputs.pred_masks)):
+            pred_masks = sam_outputs.pred_masks[i].squeeze()
+            pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[i])]
+            iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
+            iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[i])]
+            filtered_iou_scores_idx = [i for i, score in enumerate(iou_scores) if score > iou_threshold]
+            filtered_pred_masks = pred_masks[filtered_iou_scores_idx]
+            filtered_outputs = (tF.sigmoid(filtered_pred_masks).argmax(dim=0)).type(torch.uint8)
+            filtered_sam_outputs.append(filtered_outputs)
+            # utils.plot_slice(filtered_outputs)
 
-    for i in range(len(sam_outputs.pred_masks)):
-        pred_masks = sam_outputs.pred_masks[i].squeeze()
-        pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[i])]
-        iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
-        iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[i])]
-        filtered_iou_scores_idx = [i for i, score in enumerate(iou_scores) if score > iou_threshold]
-        filtered_pred_masks = pred_masks[filtered_iou_scores_idx]
-        filtered_outputs = (tF.sigmoid(filtered_pred_masks).argmax(dim=0)).type(torch.uint8)
-        filtered_sam_outputs.append(filtered_outputs)
-        # utils.plot_slice(filtered_outputs)
-
-    filtered_sam_outputs = torch.stack(filtered_sam_outputs)
+        filtered_sam_outputs = torch.stack(filtered_sam_outputs)
 
     return filtered_sam_outputs
 
