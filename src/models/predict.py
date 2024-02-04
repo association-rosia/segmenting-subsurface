@@ -235,9 +235,10 @@ def create_path(config, mask2former_id, segment_anything_id):
 
 
 def get_m2f_outputs_example(config, item, m2f_inputs):
+    device = utils.get_device()
     file_name = item['volume'][0].split('/')[-1].replace('test', 'sub')
     path = os.path.join(config['path']['data']['processed']['test'], 'stellar-durian-37-3xg8r6lz', file_name)
-    m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True))
+    m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True)).to(device)
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
