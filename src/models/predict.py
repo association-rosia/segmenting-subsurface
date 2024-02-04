@@ -78,7 +78,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     slices = item['slice']
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config, sam_input_points) for i in
-                range(m2f_outputs.shape[0])]
+                range(len(m2f_outputs))]
 
     # num_processes = multiprocessing.cpu_count()
     # pool = multiprocessing.Pool(processes=num_processes)
@@ -90,8 +90,8 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     # pool.join()
 
     mp.set_start_method('spawn', force=True)
-    p1 = mp.Process(target=extract_input_points, args=m2f_args[:(len(m2f_args) // 2)])
-    p2 = mp.Process(target=extract_input_points, args=m2f_args[(len(m2f_args) // 2):])
+    p1 = mp.Process(target=extract_input_points, args=m2f_args[:(len(m2f_outputs) // 2)])
+    p2 = mp.Process(target=extract_input_points, args=m2f_args[(len(m2f_outputs) // 2):])
     p1.start()
     p2.start()
     p1.join()
