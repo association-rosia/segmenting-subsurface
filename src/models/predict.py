@@ -74,11 +74,11 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     # sam_input_points = []
     manager = mp.Manager()
     sam_input_points = manager.list()
-
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(m2f_outputs.shape[0])]
+    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config, sam_input_points) for i in
+                range(m2f_outputs.shape[0])]
 
     # num_processes = multiprocessing.cpu_count()
     # pool = multiprocessing.Pool(processes=num_processes)
@@ -115,7 +115,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     return sam_input_points, sam_input_points_stack_num
 
 
-def extract_input_points(m2f_output, volume, slice, sam_config):
+def extract_input_points(m2f_output, volume, slice, sam_config, sam_input_points):
     indexes = torch.unique(m2f_output).tolist()
 
     if len(indexes) == 1:
@@ -146,7 +146,9 @@ def extract_input_points(m2f_output, volume, slice, sam_config):
     device = utils.get_device()
     input_points = torch.stack(input_points).to(device)
 
-    return input_points
+    sam_input_points.append(input_points)
+
+    # return input_points
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
