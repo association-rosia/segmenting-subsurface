@@ -120,7 +120,7 @@ def extract_input_points(m2f_output, volume, slice, sam_config):
     input_points = []
     for i in range(m2f_output.shape[0]):
         kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
-        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].numpy(), cv2.MORPH_OPEN, kernel=kernel)
+        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].cpu().numpy(), cv2.MORPH_OPEN, kernel=kernel)
         opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
 
         valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
@@ -134,7 +134,8 @@ def extract_input_points(m2f_output, volume, slice, sam_config):
                 input_points_coord = input_points_argw[input_points_idx]
                 input_points.append(input_points_coord)
 
-    input_points = torch.stack(input_points)
+    device = utils.get_device()
+    input_points = torch.stack(input_points).to(device)
 
     return input_points
 
