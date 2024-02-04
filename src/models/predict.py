@@ -85,11 +85,13 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     volumes = item['volume']
     slices = item['slice']
 
-    nb_split = 2
     m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
-    list_args_split = split_list_args(m2f_args, nb_split=nb_split)
-    list_process = [mp.Process(target=extract_input_points, args=(args_split, sam_input_points)) for args_split in
-                    list_args_split]
+    list_args_split = split_list_args(m2f_args, nb_split=torch.cuda.device_count())
+
+    list_process = [
+        mp.Process(target=extract_input_points(args_split, sam_input_points))
+        for i, args_split in enumerate(list_args_split)
+    ]
 
     for p in list_process:
         p.start()
@@ -111,10 +113,8 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     return sam_input_points, sam_input_points_stack_num
 
 
-def extract_input_points(list_args_split, sam_input_points):
-    # input_points_split = []
-
-    for m2f_output, volume, slice, sam_config in list_args_split:
+def extract_input_points(args_split, sam_input_points):
+    for m2f_output, volume, slice, sam_config in args_split:
         indexes = torch.unique(m2f_output).tolist()
 
         if len(indexes) == 1:
