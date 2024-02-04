@@ -88,16 +88,14 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     nb_split = 2
     m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
     list_args_split = split_list_args(m2f_args, nb_split=nb_split)
+    list_process = [mp.Process(target=extract_input_points, args=(args_split, sam_input_points)) for args_split in
+                    list_args_split]
 
-    jobs = []
-    for i in range(nb_split):
-        args_split = list_args_split[i]
-        p = mp.Process(target=extract_input_points, args=(args_split, sam_input_points))
-        jobs.append(p)
+    for p in list_process:
         p.start()
-
-    for proc in jobs:
-        proc.join()
+        
+    for p in list_process:
+        p.join()
 
     max_input_points = max([len(input_points) for input_points in sam_input_points])
     sam_input_points_stack_num = [max_input_points - len(sam_input_points[i]) for i in range(len(sam_input_points))]
