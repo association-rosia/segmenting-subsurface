@@ -1,4 +1,5 @@
 import os
+import warnings
 from multiprocessing import Process
 
 import numpy as np
@@ -10,6 +11,8 @@ from tqdm import tqdm
 import src.data.make_dataset as md
 import src.models.segformer.make_lightning as ml
 from src import utils
+
+warnings.filterwarnings('ignore')
 
 
 def main(run_id):
