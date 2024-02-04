@@ -88,7 +88,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     slices = item['slice']
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
-    list_args_split = split_list_args(m2f_args, nb_split=torch.cuda.device_count())
+    list_args_split = split_list_args(m2f_args, nb_split=mp.cpu_count())
 
     list_process = [
         mp.Process(target=extract_input_points(args_split, sam_input_points))
@@ -252,8 +252,8 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:5]
-    m2f_outputs = m2f_outputs[:5]
+    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:50]
+    m2f_outputs = m2f_outputs[:50]
 
     return m2f_inputs, m2f_outputs
 
