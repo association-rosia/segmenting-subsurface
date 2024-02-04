@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import os
 import random
 import shutil
@@ -70,7 +71,9 @@ def main():
 
 
 def create_sam_input_points(m2f_outputs, item, sam_run):
-    sam_input_points = []
+    # sam_input_points = []
+    manager = mp.Manager()
+    sam_input_points = manager.list()
 
     volumes = item['volume']
     slices = item['slice']
@@ -86,10 +89,18 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     # pool.close()
     # pool.join()
 
-    for args in tqdm(m2f_args):
-        sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+    mp.set_start_method('spawn')
+    p1 = mp.Process(target=extract_input_points, args=m2f_args[:(len(m2f_args) // 2)])
+    p2 = mp.Process(target=extract_input_points, args=m2f_args[(len(m2f_args) // 2):])
+    p1.start()
+    p2.start()
+    p1.join()
+    p2.join()
 
-    sam_input_points = [input_points.get() for input_points in sam_input_points]
+    # for args in tqdm(m2f_args):
+    #     sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+
+    # sam_input_points = [input_points.get() for input_points in sam_input_points]
     max_input_points = max([len(input_points) for input_points in sam_input_points])
     sam_input_points_stack_num = [max_input_points - len(sam_input_points[i]) for i in range(len(sam_input_points))]
 
