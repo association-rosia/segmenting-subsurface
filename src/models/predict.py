@@ -93,7 +93,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
     for p in list_process:
         p.start()
-        
+
     for p in list_process:
         p.join()
 
@@ -112,7 +112,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
 
 def extract_input_points(list_args_split, sam_input_points):
-    input_points_split = []
+    # input_points_split = []
 
     for m2f_output, volume, slice, sam_config in list_args_split:
         indexes = torch.unique(m2f_output).tolist()
@@ -144,9 +144,9 @@ def extract_input_points(list_args_split, sam_input_points):
 
         device = utils.get_device()
         input_points = torch.stack(input_points).to(device)
-        input_points_split.append(input_points)
+        sam_input_points.append(input_points)
 
-    return input_points_split
+    # return input_points_split
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
