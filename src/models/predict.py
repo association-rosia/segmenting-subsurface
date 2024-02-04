@@ -152,7 +152,7 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
 
 
 def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_input_points_stack_num, iou_threshold=0,
-                             batch_size=16):
+                             batch_size=15):
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
