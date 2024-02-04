@@ -53,8 +53,8 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             m2f_inputs = preprocess(inputs)
-            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(item, m2f_inputs)
+            # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
             sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
             sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points,
                                                    sam_input_points_stack_num)
@@ -70,8 +70,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in
-                range(m2f_outputs.shape[0])]
+    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(m2f_outputs.shape[0])]
 
     num_processes = multiprocessing.cpu_count()
     pool = multiprocessing.Pool(processes=num_processes)
@@ -225,9 +224,10 @@ def create_path(config, mask2former_id, segment_anything_id):
     return submission_path
 
 
-def get_m2f_outputs_example(item, m2f_inputs):
+def get_m2f_outputs_example(config, item, m2f_inputs):
     file_name = item['volume'][0].split('/')[-1].replace('test', 'sub')
-    m2f_outputs = torch.from_numpy(np.load(os.path.join('submissions', 'mask2former', file_name), allow_pickle=True))
+    path = os.path.join(config['path']['data']['processed']['test'], 'stellar-durian-37-3xg8r6lz', file_name)
+    m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True))
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
