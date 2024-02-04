@@ -144,8 +144,8 @@ def extract_input_points(args_split, sam_input_points):
                     input_points_coord = input_points_argw[input_points_idx]
                     input_points.append(input_points_coord)
 
-        device = utils.get_device()
-        input_points = torch.stack(input_points).to(device)
+        # device = utils.get_device()
+        input_points = torch.stack(input_points)  # .to(device)
         sam_input_points.append(input_points)
 
     # return input_points_split
