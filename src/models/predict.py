@@ -82,7 +82,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
     mp.set_start_method('spawn', force=True)
     with mp.Pool(5) as p:
-        p.map(extract_input_points, m2f_args)
+        p.starmap(extract_input_points, m2f_args)
 
     # for args in tqdm(m2f_args):
     #     sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
