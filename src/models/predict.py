@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 import shutil
@@ -52,37 +53,55 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             m2f_inputs = preprocess(inputs)
-            # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            m2f_inputs, m2f_outputs = get_m2f_outputs_example(item, m2f_inputs)
-            sam_input_points = create_sam_input_points(m2f_outputs, m2f_inputs, sam_run)
-            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points)
-
-            outputs = unprocess(outputs)
+            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(item, m2f_inputs)
+            sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
+            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points,
+                                                   sam_input_points_stack_num)
+            outputs = unprocess(sam_outputs)
             save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
-def create_sam_input_points(m2f_outputs, m2f_inputs, sam_run):
+def create_sam_input_points(m2f_outputs, item, sam_run):
     sam_input_points = []
 
-    # add multiprocessing
-    m2f_outputs_list = [m2f_outputs[i].cpu() for i in range(m2f_outputs.shape[0])]
-    for m2f_output in tqdm(m2f_outputs_list):
-        input_points = extract_input_points(m2f_output, sam_run)
-        sam_input_points.append(input_points)
+    volumes = item['volume']
+    slices = item['slice']
 
-    return sam_input_points
+    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in
+                range(m2f_outputs.shape[0])]
+
+    num_processes = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=num_processes)
+
+    for args in m2f_args:
+        sam_input_points.append(pool.apply_async(extract_input_points, args=args))
+
+    pool.close()
+    pool.join()
+
+    sam_input_points = [input_points.get() for input_points in sam_input_points]
+    max_input_points = max([len(input_points) for input_points in sam_input_points])
+    sam_input_points_stack_num = [max_input_points - len(sam_input_points[i]) for i in range(len(sam_input_points))]
+
+    sam_input_points_stack = [sam_input_points[i][0].unsqueeze(0).repeat(sam_input_points_stack_num[i], 1, 1) for i in
+                              range(len(sam_input_points))]
+
+    sam_input_points = [torch.cat([sam_input_points[i], sam_input_points_stack[i]]) for i in
+                        range(len(sam_input_points))]
+
+    sam_input_points = torch.stack(sam_input_points)
+
+    return sam_input_points, sam_input_points_stack_num
 
 
-def extract_input_points(m2f_output, sam_run):
+def extract_input_points(m2f_output, volume, slice, sam_config):
     indexes = torch.unique(m2f_output).tolist()
 
-    # if len(indexes) == 1:
-    #     utils.plot_slice(m2f_inputs['pixel_values'][i][0])
-    #     utils.plot_slice(m2f_inputs['pixel_values'][i][1])
-    #     utils.plot_slice(m2f_outputs[i])
-    #     print()
+    if len(indexes) == 1:
+        print(volume, slice)
 
     m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
     m2f_output = torch.permute(m2f_output, (2, 0, 1))
@@ -101,9 +120,8 @@ def extract_input_points(m2f_output, sam_run):
             count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
 
             if count_1 > 1000:
-                # utils.plot_slice(opened_m2f_output_i)
                 input_points_argw = torch.argwhere(opened_m2f_output_i)
-                input_points_idx = random.sample(range(len(input_points_argw)), k=sam_run.config['num_input_points'])
+                input_points_idx = random.sample(range(len(input_points_argw)), k=sam_config['num_input_points'])
                 input_points_coord = input_points_argw[input_points_idx]
                 input_points.append(input_points_coord)
 
@@ -120,27 +138,31 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
     return outputs
 
 
-def predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points):
-    sam_outputs = []
-    sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
+def predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points, sam_input_points_stack_num,
+                             iou_threshold=0):
+    filtered_sam_outputs = []
+    sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024)).to(torch.float32)
+    sam_input_points = sam_input_points.to(torch.float32)
+    sam_outputs = sam_lightning.model(
+        pixel_values=sam_pixel_values,
+        input_points=sam_input_points,
+        multimask_output=False
+    )
 
-    for i, input_points in enumerate(sam_input_points):
-        utils.plot_slice(m2f_inputs['pixel_values'][i])
-        m2f_outputs[i][m2f_outputs[i] == 255] = torch.unique(m2f_outputs[i]).tolist()[-2] + 1
-        utils.plot_slice(m2f_outputs[i])
-        pixel_values = sam_pixel_values[i].unsqueeze(0).to(torch.float32)
-        input_points = input_points.unsqueeze(0).to(torch.float32)
-        outputs = sam_lightning({'pixel_values': pixel_values, 'input_points': input_points})
+    for i in range(len(sam_outputs.pred_masks)):
+        pred_masks = sam_outputs.pred_masks[i].squeeze()
+        pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[i])]
+        iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
+        iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[i])]
+        filtered_iou_scores_idx = [i for i, score in enumerate(iou_scores) if score > iou_threshold]
+        filtered_pred_masks = pred_masks[filtered_iou_scores_idx]
+        filtered_outputs = (tF.sigmoid(filtered_pred_masks).argmax(dim=0)).type(torch.uint8)
+        filtered_sam_outputs.append(filtered_outputs)
+        # utils.plot_slice(filtered_outputs)
 
-        # TODO: return predicted IuO and filter on that
+    filtered_sam_outputs = torch.stack(filtered_sam_outputs)
 
-        outputs = (tF.sigmoid(outputs).argmax(dim=0)).type(torch.uint8)
-        utils.plot_slice(outputs)
-        sam_outputs.append(outputs)
-
-    sam_outputs = torch.stack(sam_outputs)
-
-    return sam_outputs
+    return filtered_sam_outputs
 
 
 def preprocess(inputs):
@@ -203,14 +225,14 @@ def create_path(config, mask2former_id, segment_anything_id):
     return submission_path
 
 
-def get_m2f_outputs_example(item, m2f_inputs, k=3):
+def get_m2f_outputs_example(item, m2f_inputs):
     file_name = item['volume'][0].split('/')[-1].replace('test', 'sub')
     m2f_outputs = torch.from_numpy(np.load(os.path.join('submissions', 'mask2former', file_name), allow_pickle=True))
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:k]
-    m2f_outputs = m2f_outputs[:k]
+    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:5]
+    m2f_outputs = m2f_outputs[:5]
 
     return m2f_inputs, m2f_outputs
 
