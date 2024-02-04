@@ -70,24 +70,35 @@ def main():
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
+def split_list_args(args, nb_split):
+    sub_len = len(args) // nb_split
+    list_args_split = [args[sub_len * i:sub_len * (i + 1)] for i in range(nb_split - 1)]
+    list_args_split.append(args[sub_len * (nb_split - 1):])
+
+    return list_args_split
+
+
 def create_sam_input_points(m2f_outputs, item, sam_run):
-    # sam_input_points = []
     manager = mp.Manager()
     sam_input_points = manager.list()
+
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config, sam_input_points) for i in
-                range(len(m2f_outputs))]
+    nb_split = 2
+    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
+    list_args_split = split_list_args(m2f_args, nb_split=nb_split)
 
-    # mp.set_start_method('spawn', force=True)
-    with mp.Pool(5) as p:
-        p.starmap(extract_input_points, m2f_args)
+    jobs = []
+    for i in range(nb_split):
+        args_split = list_args_split[i]
+        p = mp.Process(target=extract_input_points, args=(args_split, sam_input_points))
+        jobs.append(p)
+        p.start()
 
-    # for args in tqdm(m2f_args):
-    #     sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+    for proc in jobs:
+        proc.join()
 
-    # sam_input_points = [input_points.get() for input_points in sam_input_points]
     max_input_points = max([len(input_points) for input_points in sam_input_points])
     sam_input_points_stack_num = [max_input_points - len(sam_input_points[i]) for i in range(len(sam_input_points))]
 
@@ -102,40 +113,42 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     return sam_input_points, sam_input_points_stack_num
 
 
-def extract_input_points(m2f_output, volume, slice, sam_config, sam_input_points):
-    indexes = torch.unique(m2f_output).tolist()
+def extract_input_points(list_args_split, sam_input_points):
+    input_points_split = []
 
-    if len(indexes) == 1:
-        print(volume, slice)
+    for m2f_output, volume, slice, sam_config in list_args_split:
+        indexes = torch.unique(m2f_output).tolist()
 
-    m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
-    m2f_output = torch.permute(m2f_output, (2, 0, 1))
-    m2f_output = m2f_output[indexes]
-    m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
+        if len(indexes) == 1:
+            print(volume, slice)
 
-    input_points = []
-    for i in range(m2f_output.shape[0]):
-        kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
-        opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].cpu().numpy(), cv2.MORPH_OPEN, kernel=kernel)
-        opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
+        m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
+        m2f_output = torch.permute(m2f_output, (2, 0, 1))
+        m2f_output = m2f_output[indexes]
+        m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
 
-        valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
+        input_points = []
+        for i in range(m2f_output.shape[0]):
+            kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(12, 12))
+            opened_m2f_output_i = cv2.morphologyEx(m2f_output[i].cpu().numpy(), cv2.MORPH_OPEN, kernel=kernel)
+            opened_m2f_output_i = torch.from_numpy(opened_m2f_output_i)
 
-        if valid_label:
-            count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
+            valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
 
-            if count_1 > 1000:
-                input_points_argw = torch.argwhere(opened_m2f_output_i)
-                input_points_idx = random.sample(range(len(input_points_argw)), k=sam_config['num_input_points'])
-                input_points_coord = input_points_argw[input_points_idx]
-                input_points.append(input_points_coord)
+            if valid_label:
+                count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
 
-    device = utils.get_device()
-    input_points = torch.stack(input_points).to(device)
+                if count_1 > 1000:
+                    input_points_argw = torch.argwhere(opened_m2f_output_i)
+                    input_points_idx = random.sample(range(len(input_points_argw)), k=sam_config['num_input_points'])
+                    input_points_coord = input_points_argw[input_points_idx]
+                    input_points.append(input_points_coord)
 
-    sam_input_points.append(input_points)
+        device = utils.get_device()
+        input_points = torch.stack(input_points).to(device)
+        input_points_split.append(input_points)
 
-    # return input_points
+    return input_points_split
 
 
 def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
