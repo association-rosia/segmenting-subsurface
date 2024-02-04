@@ -87,7 +87,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
+    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
     list_args_split = split_list_args(m2f_args, nb_split=torch.cuda.device_count())
 
     list_process = [
