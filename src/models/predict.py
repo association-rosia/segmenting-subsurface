@@ -55,17 +55,11 @@ def main():
             m2f_inputs = preprocess(inputs)
             # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
             m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
-            print('m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)')
             sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
-            print('sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)')
-            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points,
+            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points,
                                                    sam_input_points_stack_num)
-            print('sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points, '
-                  'sam_input_points_stack_num)')
             outputs = unprocess(sam_outputs)
-            print('outputs = unprocess(sam_outputs)')
             save_outputs(outputs, save_path)
-            print('save_outputs(outputs, save_path)')
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
@@ -157,10 +151,12 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
     return outputs
 
 
-def predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points, sam_input_points_stack_num,
-                             iou_threshold=0):
+def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_input_points_stack_num, iou_threshold=0):
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
+
+    print(sam_pixel_values.dtype)
+    print(sam_input_points.dtype)
 
     sam_outputs = sam_lightning.model(
         pixel_values=sam_pixel_values,
@@ -251,9 +247,8 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True)).to(device)
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
-
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:10]
-    m2f_outputs = m2f_outputs[:10]
+    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:20]
+    m2f_outputs = m2f_outputs[:20]
 
     return m2f_inputs, m2f_outputs
 
