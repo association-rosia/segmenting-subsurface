@@ -89,7 +89,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     # pool.close()
     # pool.join()
 
-    mp.set_start_method('spawn')
+    mp.set_start_method('spawn', force=True)
     p1 = mp.Process(target=extract_input_points, args=m2f_args[:(len(m2f_args) // 2)])
     p2 = mp.Process(target=extract_input_points, args=m2f_args[(len(m2f_args) // 2):])
     p1.start()
@@ -162,8 +162,8 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
 def predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points, sam_input_points_stack_num,
                              iou_threshold=0):
     filtered_sam_outputs = []
-    sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))  # .to(torch.float32)
-    sam_input_points = sam_input_points  # .to(torch.float32)
+    sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
+
     sam_outputs = sam_lightning.model(
         pixel_values=sam_pixel_values,
         input_points=sam_input_points,
