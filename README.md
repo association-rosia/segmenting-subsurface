@@ -18,6 +18,7 @@ and [NVIDIA](https://www.nvidia.com/).
 ```bash
 python src/models/<nom du model>/train_model.py <hyperparams args>
 ```
+
 View project's runs on [WandB](https://wandb.ai/association-rosia/segmenting-subsurface/).
 
 ### Create a submission
@@ -26,14 +27,17 @@ View project's runs on [WandB](https://wandb.ai/association-rosia/segmenting-sub
 python src/models/predict_model.py -n {model.ckpt}
 ```
 
-
 ## 🔬 References
 
-Kirillov, A., Mintun, E., Ravi, N., Mao, H., Rolland, C., Gustafson, L., ... & Girshick, R. (2023). Segment anything. arXiv preprint arXiv:2304.02643.
+Kirillov, A., Mintun, E., Ravi, N., Mao, H., Rolland, C., Gustafson, L., ... & Girshick, R. (2023). Segment anything.
+arXiv preprint arXiv:2304.02643.
 
-Cheng, B., Misra, I., Schwing, A. G., Kirillov, A., & Girdhar, R. (2022). Masked-attention mask transformer for universal image segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition (pp. 1290-1299).
+Cheng, B., Misra, I., Schwing, A. G., Kirillov, A., & Girdhar, R. (2022). Masked-attention mask transformer for
+universal image segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition (pp.
+1290-1299).
 
-Xie, E., Wang, W., Yu, Z., Anandkumar, A., Alvarez, J. M., & Luo, P. (2021). SegFormer: Simple and efficient design for semantic segmentation with transformers. Advances in Neural Information Processing Systems, 34, 12077-12090.
+Xie, E., Wang, W., Yu, Z., Anandkumar, A., Alvarez, J. M., & Luo, P. (2021). SegFormer: Simple and efficient design for
+semantic segmentation with transformers. Advances in Neural Information Processing Systems, 34, 12077-12090.
 
 ## 📝 Citing
 
@@ -51,7 +55,6 @@ Xie, E., Wang, W., Yu, Z., Anandkumar, A., Alvarez, J. M., & Luo, P. (2021). Seg
 ## 🛡️ License
 
 Project is distributed under [MIT License](https://github.com/association-rosia/segmenting-subsurface/blob/main/LICENSE)
-
 
 ## 👨🏻‍💻 Contributors
 
