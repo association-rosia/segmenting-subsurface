@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import random
 import shutil
@@ -76,20 +75,19 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config) for i in
-                range(m2f_outputs.shape[0])]
+    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(m2f_outputs.shape[0])]
 
-    num_processes = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(processes=num_processes)
+    # num_processes = multiprocessing.cpu_count()
+    # pool = multiprocessing.Pool(processes=num_processes)
+    #
+    # for args in m2f_args:
+    #     sam_input_points.append(pool.apply_async(extract_input_points, args=args))
+    #
+    # pool.close()
+    # pool.join()
 
     for args in m2f_args:
-        sam_input_points.append(pool.apply_async(extract_input_points, args=args))
-
-    pool.close()
-    pool.join()
-
-    # for args in m2f_args:
-    #     sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
+        sam_input_points.append(extract_input_points(args[0], args[1], args[2], args[3]))
 
     sam_input_points = [input_points.get() for input_points in sam_input_points]
     max_input_points = max([len(input_points) for input_points in sam_input_points])
@@ -243,8 +241,8 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
 
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:5]
-    m2f_outputs = m2f_outputs[:5]
+    # m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:5]
+    # m2f_outputs = m2f_outputs[:5]
 
     return m2f_inputs, m2f_outputs
 
