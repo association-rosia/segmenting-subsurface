@@ -111,7 +111,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
                         range(len(sam_input_points))]
 
     device = utils.get_device()
-    sam_input_points = torch.stack(sam_input_points).to(device)
+    sam_input_points = torch.stack(sam_input_points).to(torch.float16).to(device)
 
     return sam_input_points, sam_input_points_stack_num
 
