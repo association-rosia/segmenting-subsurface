@@ -80,7 +80,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(m2f_outputs.shape[0])]
 
-    num_processes = multiprocessing.cpu_count()
+    num_processes = 23
     pool = multiprocessing.Pool(processes=num_processes)
 
     for args in m2f_args:
