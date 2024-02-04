@@ -77,10 +77,10 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     volumes = item['volume']
     slices = item['slice']
 
-    m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config, sam_input_points) for i in
+    m2f_args = [(m2f_outputs[i].cpu(), volumes[i], slices[i].item(), sam_run.config, sam_input_points) for i in
                 range(len(m2f_outputs))]
 
-    mp.set_start_method('spawn', force=True)
+    # mp.set_start_method('spawn', force=True)
     with mp.Pool(5) as p:
         p.starmap(extract_input_points, m2f_args)
 
