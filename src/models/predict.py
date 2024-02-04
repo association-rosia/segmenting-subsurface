@@ -55,6 +55,7 @@ def main():
             m2f_inputs = preprocess(inputs)
             # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
             m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+            print('m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)')
             sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
             print('sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)')
             sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, m2f_outputs, sam_input_points,
