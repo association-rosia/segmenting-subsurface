@@ -195,10 +195,10 @@ def get_save_path(item, submission_path):
 
 
 def unprocess(outputs):
-    outputs = tF.interpolate(outputs.unsqueeze(0), size=(100, 300), mode='bilinear', align_corners=False)
-    outputs = outputs.squeeze(0)
+    outputs = outputs.unsqueeze(0).to(torch.float16)
+    outputs = tF.interpolate(outputs, size=(100, 300), mode='bilinear', align_corners=False)
+    outputs = outputs.squeeze(0).to(torch.uint8)
     outputs = torch.movedim(outputs, 1, 2)
-    outputs = outputs.to(torch.uint8)
 
     return outputs
 
