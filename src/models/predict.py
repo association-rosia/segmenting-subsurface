@@ -46,6 +46,7 @@ def main():
     test_dataloader = DataLoader(
         dataset=test_dataset,
         batch_size=300,
+        num_workers=m2f_run.config['num_workers'],
         shuffle=False
     )
 
