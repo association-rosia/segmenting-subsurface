@@ -51,15 +51,18 @@ def main():
 
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
-            save_path = get_save_path(item, submission_path)
-            m2f_inputs = preprocess(inputs)
-            # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
-            sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
-            sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points,
-                                                   sam_input_points_stack_num)
-            outputs = unprocess(sam_outputs)
-            save_outputs(outputs, save_path)
+            print(item['volume'][0])
+
+            if item['volume'][0] == 'data/raw/test/test_vol_41.npy':
+                save_path = get_save_path(item, submission_path)
+                m2f_inputs = preprocess(inputs)
+                # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+                m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+                sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
+                sam_outputs = predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points,
+                                                       sam_input_points_stack_num)
+                outputs = unprocess(sam_outputs)
+                save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
@@ -115,11 +118,12 @@ def extract_input_points(args_split, sam_input_points):
         indexes = torch.unique(m2f_output).tolist()
 
         if len(indexes) == 1:
-            print(volume, slice)
+            m2f_output = m2f_output.unsqueeze(0)
+        else:
+            m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
+            m2f_output = torch.permute(m2f_output, (2, 0, 1))
+            m2f_output = m2f_output[indexes]
 
-        m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
-        m2f_output = torch.permute(m2f_output, (2, 0, 1))
-        m2f_output = m2f_output[indexes]
         m2f_output = utils.resize_tensor_2d(m2f_output, (1024, 1024))
 
         input_points = []
@@ -250,8 +254,6 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True)).to(device)
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
-    # m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:30]
-    # m2f_outputs = m2f_outputs[:30]
 
     return m2f_inputs, m2f_outputs
 
