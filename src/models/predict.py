@@ -177,6 +177,8 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     manager = mp.Manager()
     filtered_sam_outputs = manager.list()
 
+    print('splits creat')
+
     nb_split = torch.cuda.device_count()
     sam_pixel_values_split = split_list(sam_pixel_values, nb_split=nb_split)
     sam_input_points_split = split_list(sam_input_points, nb_split=nb_split)
