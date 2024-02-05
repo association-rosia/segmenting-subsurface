@@ -21,17 +21,21 @@ warnings.filterwarnings('ignore')
 def main():
     mask2former_id = '3xg8r6lz'
     segment_anything_id = '2snz8a1d'
-
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
+    test_volumes = md.get_volumes(config, set='test')
+    predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, submission_path, cuda_idx=0)
+    shutil.make_archive(submission_path, 'zip', submission_path)
+
+
+def predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, submission_path, cuda_idx):
+    device = f'cuda:{cuda_idx}'
 
     m2f_run = get_run(mask2former_id)
-    m2f_lightning, m2f_processor = load_model_processor(config, m2f_run, 'mask2former')
+    m2f_lightning, m2f_processor = load_model_processor(config, m2f_run, 'mask2former', device)
 
     sam_run = get_run(segment_anything_id)
-    sam_lightning, sam_processor = load_model_processor(config, sam_run, 'segment_anything')
-
-    test_volumes = md.get_volumes(config, set='test')
+    sam_lightning, sam_processor = load_model_processor(config, sam_run, 'segment_anything', device)
 
     args = {
         'config': config,
@@ -53,24 +57,28 @@ def main():
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
-            m2f_inputs = preprocess(inputs)
 
-            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+            if not os.path.isfile(save_path):
+                m2f_inputs = preprocess(inputs, device)
+                m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+                # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
 
-            sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
+                sam_input_points, sam_input_points_stack_num = create_sam_input_points(
+                    m2f_outputs,
+                    item,
+                    sam_run,
+                    device
+                )
 
-            sam_outputs = predict_segment_anything(
-                sam_lightning,
-                m2f_inputs,
-                sam_input_points,
-                sam_input_points_stack_num
-            )
+                sam_outputs = predict_segment_anything(
+                    sam_lightning,
+                    m2f_inputs,
+                    sam_input_points,
+                    sam_input_points_stack_num
+                )
 
-            outputs = unprocess(sam_outputs)
-            save_outputs(outputs, save_path)
-
-    shutil.make_archive(submission_path, 'zip', submission_path)
+                outputs = unprocess(sam_outputs)
+                save_outputs(outputs, save_path)
 
 
 def split_list(list_to_split, nb_split):
@@ -81,7 +89,7 @@ def split_list(list_to_split, nb_split):
     return list_args_split
 
 
-def create_sam_input_points(m2f_outputs, item, sam_run):
+def create_sam_input_points(m2f_outputs, item, sam_run, device):
     mp.set_start_method('spawn', force=True)
     manager = mp.Manager()
     sam_input_points = manager.list()
@@ -89,7 +97,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     slices = item['slice']
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
-    list_args_split = split_list(m2f_args, nb_split=mp.cpu_count())
+    list_args_split = split_list(m2f_args, nb_split=sam_run.config['num_workers'])
 
     list_process = [
         mp.Process(target=extract_input_points(args_split, sam_input_points))
@@ -111,7 +119,6 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     sam_input_points = [torch.cat([sam_input_points[i], sam_input_points_stack[i]]) for i in
                         range(len(sam_input_points))]
 
-    device = utils.get_device()
     sam_input_points = torch.stack(sam_input_points).to(torch.float16).to(device)
 
     return sam_input_points, sam_input_points_stack_num
@@ -200,8 +207,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     return filtered_sam_outputs
 
 
-def preprocess(inputs):
-    device = utils.get_device()
+def preprocess(inputs, device):
     inputs['pixel_values'] = inputs['pixel_values'].to(torch.float16)
     inputs['pixel_values'] = inputs['pixel_values'].to(device)
 
@@ -233,13 +239,13 @@ def save_outputs(outputs, save_path):
     np.save(save_path, outputs, allow_pickle=True)
 
 
-def load_model_processor(config, run, model_name):
+def load_model_processor(config, run, model_name, device):
     lightning = None
 
     if model_name == 'mask2former':
-        lightning = utils.load_mask2former(config, run)
+        lightning = utils.load_mask2former(config, run, device)
     elif model_name == 'segment_anything':
-        lightning = utils.load_segment_anything(config, run)
+        lightning = utils.load_segment_anything(config, run, device)
 
     processor = lightning.processor
 
