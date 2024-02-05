@@ -54,9 +54,10 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             save_path = get_save_path(item, submission_path)
             m2f_inputs = preprocess(inputs)
-            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
 
-            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+            # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+
             sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
 
             sam_outputs = predict_segment_anything(
@@ -72,10 +73,10 @@ def main():
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
-def split_list_args(args, nb_split):
-    sub_len = len(args) // nb_split
-    list_args_split = [args[sub_len * i:sub_len * (i + 1)] for i in range(nb_split - 1)]
-    list_args_split.append(args[sub_len * (nb_split - 1):])
+def split_list(list_to_split, nb_split):
+    sub_len = len(list_to_split) // nb_split
+    list_args_split = [list_to_split[sub_len * i:sub_len * (i + 1)] for i in range(nb_split - 1)]
+    list_args_split.append(list_to_split[sub_len * (nb_split - 1):])
 
     return list_args_split
 
@@ -84,13 +85,13 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     mp.set_start_method('spawn', force=True)
     manager = mp.Manager()
     sam_input_points = manager.list()
-    m2f_outputs = m2f_outputs.cpu()
+    # m2f_outputs = m2f_outputs.cpu()
 
     volumes = item['volume']
     slices = item['slice']
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
-    list_args_split = split_list_args(m2f_args, nb_split=mp.cpu_count())
+    list_args_split = split_list(m2f_args, nb_split=mp.cpu_count())
 
     list_process = [
         mp.Process(target=extract_input_points(args_split, sam_input_points))
@@ -170,15 +171,51 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
     return outputs
 
 
-def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_input_points_stack_num, iou_threshold=0,
-                             batch_size=10):
-    filtered_sam_outputs = []
+def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_input_points_stack_num, batch_size=5):
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
+    mp.set_start_method('spawn', force=True)
+    manager = mp.Manager()
+    filtered_sam_outputs = manager.list()
 
-    for split in range(0, 300, batch_size):
+    nb_split = torch.cuda.device_count()
+    sam_pixel_values_split = split_list(sam_pixel_values, nb_split=nb_split)
+    sam_input_points_split = split_list(sam_input_points, nb_split=nb_split)
+    sam_input_points_stack_num_split = split_list(sam_input_points_stack_num, nb_split=nb_split)
+
+    list_process = [
+        mp.Process(target=predict_segment_anything_split(
+            cuda_idx=i,
+            sam_lightning=sam_lightning,
+            sam_pixel_values=sam_pixel_values_split[i],
+            sam_input_points=sam_input_points_split[i],
+            sam_input_points_stack_num=sam_input_points_stack_num_split[i],
+            batch_size=batch_size,
+            filtered_sam_outputs=filtered_sam_outputs)
+        ) for i in range(nb_split)
+    ]
+
+    for p in list_process:
+        p.start()
+
+    for p in list_process:
+        p.join()
+
+    filtered_sam_outputs = [el.to('cuda:0') for el in filtered_sam_outputs]
+    filtered_sam_outputs = torch.stack(filtered_sam_outputs)
+
+    return filtered_sam_outputs
+
+
+def predict_segment_anything_split(cuda_idx, sam_lightning, sam_pixel_values, sam_input_points,
+                                   sam_input_points_stack_num, batch_size, filtered_sam_outputs, iou_threshold=0):
+    device = f'cuda:{cuda_idx}'
+    sam_lightning = sam_lightning.to(device)
+    sam_pixel_values = sam_pixel_values.to(device)
+    sam_input_points = sam_input_points.to(device)
+
+    for split in range(0, len(sam_pixel_values), batch_size):
         start = split
-        end = start + batch_size
-        # print(start, end)
+        end = start + split
 
         sam_outputs = sam_lightning.model(
             pixel_values=sam_pixel_values[start:end],
@@ -196,10 +233,6 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
             filtered_outputs = (tF.sigmoid(filtered_pred_masks).argmax(dim=0)).type(torch.uint8)
             filtered_sam_outputs.append(filtered_outputs)
             # utils.plot_slice(filtered_outputs)
-
-    filtered_sam_outputs = torch.stack(filtered_sam_outputs)
-
-    return filtered_sam_outputs
 
 
 def preprocess(inputs):
