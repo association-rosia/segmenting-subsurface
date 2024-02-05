@@ -24,7 +24,26 @@ def main():
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
     test_volumes = md.get_volumes(config, set='test')
-    predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, submission_path, cuda_idx=0)
+    test_volumes = split_list(test_volumes, nb_split=torch.cuda.device_count())
+
+    with torch.no_grad():
+        list_process = [
+            mp.Process(target=predict_pipeline(
+                mask2former_id,
+                segment_anything_id,
+                config,
+                sub_test_volumes,
+                submission_path,
+                cuda_idx=i)
+            ) for i, sub_test_volumes in enumerate(test_volumes)
+        ]
+
+        for p in list_process:
+            p.start()
+
+        for p in list_process:
+            p.join()
+
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
@@ -54,31 +73,30 @@ def predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, 
         shuffle=False
     )
 
-    with torch.no_grad():
-        for item, inputs in tqdm(test_dataloader):
-            save_path = get_save_path(item, submission_path)
+    for item, inputs in tqdm(test_dataloader):
+        save_path = get_save_path(item, submission_path)
 
-            if not os.path.isfile(save_path):
-                m2f_inputs = preprocess(inputs, device)
-                m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-                # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+        if not os.path.isfile(save_path):
+            m2f_inputs = preprocess(inputs, device)
+            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
 
-                sam_input_points, sam_input_points_stack_num = create_sam_input_points(
-                    m2f_outputs,
-                    item,
-                    sam_run,
-                    device
-                )
+            sam_input_points, sam_input_points_stack_num = create_sam_input_points(
+                m2f_outputs,
+                item,
+                sam_run,
+                device
+            )
 
-                sam_outputs = predict_segment_anything(
-                    sam_lightning,
-                    m2f_inputs,
-                    sam_input_points,
-                    sam_input_points_stack_num
-                )
+            sam_outputs = predict_segment_anything(
+                sam_lightning,
+                m2f_inputs,
+                sam_input_points,
+                sam_input_points_stack_num
+            )
 
-                outputs = unprocess(sam_outputs)
-                save_outputs(outputs, save_path)
+            outputs = unprocess(sam_outputs)
+            save_outputs(outputs, save_path)
 
 
 def split_list(list_to_split, nb_split):
