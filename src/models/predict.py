@@ -166,7 +166,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
             multimask_output=False
         )
 
-        for i in range(len(sam_outputs.pred_masks)):
+        for i in range(start, end):
             pred_masks = sam_outputs.pred_masks[i].squeeze()
             pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[i])]
             iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
