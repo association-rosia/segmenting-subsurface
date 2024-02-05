@@ -12,7 +12,8 @@ num_labels: 1
 num_channels_mask: 2
 segformer_id: 'swift-sponge-567-k13mlcpr'
 
-dilation: 30
+# dilation: 30
+dilation: 1
 val_size: 0.2
 dim: '0'
 
