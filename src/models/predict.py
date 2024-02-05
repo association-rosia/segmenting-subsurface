@@ -52,23 +52,22 @@ def main():
 
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
-            if item['volume'][0] == 'data/raw/test/test_vol_41.npy':
-                save_path = get_save_path(item, submission_path)
-                m2f_inputs = preprocess(inputs)
-                m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+            save_path = get_save_path(item, submission_path)
+            m2f_inputs = preprocess(inputs)
+            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
 
-                # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
-                sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
+            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+            sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
 
-                sam_outputs = predict_segment_anything(
-                    sam_lightning,
-                    m2f_inputs,
-                    sam_input_points,
-                    sam_input_points_stack_num
-                )
+            sam_outputs = predict_segment_anything(
+                sam_lightning,
+                m2f_inputs,
+                sam_input_points,
+                sam_input_points_stack_num
+            )
 
-                outputs = unprocess(sam_outputs)
-                save_outputs(outputs, save_path)
+            outputs = unprocess(sam_outputs)
+            save_outputs(outputs, save_path)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 

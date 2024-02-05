@@ -57,7 +57,7 @@ def resize_tensor_2d(tensor, size):
     return resized_tensor
 
 
-def plot_slice(slice):
+def plot_slice(slice, title=None):
     ax = plt.subplot()
 
     if slice.shape[0] == 3:
@@ -68,7 +68,7 @@ def plot_slice(slice):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     plt.colorbar(im, cax=cax)
-
+    plt.title(title)
     plt.show()
 
 
