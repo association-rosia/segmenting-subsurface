@@ -120,7 +120,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
 
 def extract_input_points(args_split, sam_input_points):
     for m2f_output, volume, slice, sam_config in args_split:
-        m2f_output[m2f_output != -1] = torch.max(m2f_output).item() + 1
+        m2f_output[m2f_output == -1] = torch.max(m2f_output).item() + 1
         indexes = torch.unique(m2f_output).tolist()
 
         if len(indexes) == 1:
