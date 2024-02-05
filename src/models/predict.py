@@ -159,6 +159,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     for split in range(0, 300 - batch_size, batch_size):
         start = split
         end = start + batch_size
+        print(start, end)
 
         sam_outputs = sam_lightning.model(
             pixel_values=sam_pixel_values[start:end],
