@@ -24,6 +24,7 @@ def main():
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
     test_volumes = md.get_volumes(config, set='test')
+    test_volumes = [volume_path for volume_path in test_volumes if not sub_exists(submission_path, volume_path)]
     test_volumes = split_list(test_volumes, nb_split=torch.cuda.device_count())
 
     with torch.no_grad():
@@ -75,28 +76,26 @@ def predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, 
 
     for item, inputs in tqdm(test_dataloader):
         save_path = get_save_path(item, submission_path)
+        m2f_inputs = preprocess(inputs, device)
+        m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+        # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
 
-        if not os.path.isfile(save_path):
-            m2f_inputs = preprocess(inputs, device)
-            m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-            # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+        sam_input_points, sam_input_points_stack_num = create_sam_input_points(
+            m2f_outputs,
+            item,
+            sam_run,
+            device
+        )
 
-            sam_input_points, sam_input_points_stack_num = create_sam_input_points(
-                m2f_outputs,
-                item,
-                sam_run,
-                device
-            )
+        sam_outputs = predict_segment_anything(
+            sam_lightning,
+            m2f_inputs,
+            sam_input_points,
+            sam_input_points_stack_num
+        )
 
-            sam_outputs = predict_segment_anything(
-                sam_lightning,
-                m2f_inputs,
-                sam_input_points,
-                sam_input_points_stack_num
-            )
-
-            outputs = unprocess(sam_outputs)
-            save_outputs(outputs, save_path)
+        outputs = unprocess(sam_outputs)
+        save_outputs(outputs, save_path)
 
 
 def split_list(list_to_split, nb_split):
@@ -241,6 +240,15 @@ def get_save_path(item, submission_path):
     save_path = os.path.join(submission_path, volume_path)
 
     return save_path
+
+
+def sub_exists(submission_path, volume_path):
+    volume_path = os.path.split(volume_path)[-1]
+    volume_path = volume_path.replace('test', 'sub')
+    save_path = os.path.join(submission_path, volume_path)
+    file_exists = os.path.isfile(save_path)
+
+    return file_exists
 
 
 def unprocess(outputs):
