@@ -89,7 +89,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     mp.set_start_method('spawn', force=True)
     manager = mp.Manager()
     sam_input_points = manager.list()
-    # m2f_outputs = m2f_outputs.cpu()
+    m2f_outputs = m2f_outputs.cpu()
 
     volumes = item['volume']
     slices = item['slice']
