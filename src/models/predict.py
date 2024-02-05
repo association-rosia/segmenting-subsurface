@@ -176,7 +176,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
 
     for split in range(0, len(sam_pixel_values), batch_size):
         start = split
-        end = start + split
+        end = start + batch_size
 
         print(sam_pixel_values[start:end].shape)
         print(sam_input_points[start:end].shape)
