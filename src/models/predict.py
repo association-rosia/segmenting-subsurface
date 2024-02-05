@@ -249,8 +249,8 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True)).to(device)
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:45]
-    m2f_outputs = m2f_outputs[:45]
+    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:30]
+    m2f_outputs = m2f_outputs[:30]
 
     return m2f_inputs, m2f_outputs
 
