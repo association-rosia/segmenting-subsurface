@@ -89,7 +89,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run):
     slices = item['slice']
 
     m2f_args = [(m2f_outputs[i], volumes[i], slices[i].item(), sam_run.config) for i in range(len(m2f_outputs))]
-    list_args_split = split_list(m2f_args, nb_split=10)
+    list_args_split = split_list(m2f_args, nb_split=mp.cpu_count())
 
     list_process = [
         mp.Process(target=extract_input_points(args_split, sam_input_points))
@@ -177,9 +177,6 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     for split in range(0, len(sam_pixel_values), batch_size):
         start = split
         end = start + batch_size
-
-        print(sam_pixel_values[start:end].shape)
-        print(sam_input_points[start:end].shape)
 
         sam_outputs = sam_lightning.model(
             pixel_values=sam_pixel_values[start:end],
