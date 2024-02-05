@@ -46,7 +46,7 @@ def main():
     test_dataloader = DataLoader(
         dataset=test_dataset,
         batch_size=300,
-        num_workers=m2f_run.config['num_workers'],
+        # num_workers=m2f_run.config['num_workers'],
         shuffle=False
     )
 
@@ -54,10 +54,17 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             if item['volume'][0] == 'data/raw/test/test_vol_41.npy':
                 save_path = get_save_path(item, submission_path)
+
                 m2f_inputs = preprocess(inputs)
+                print('m2f_inputs[pixel_values].shape', m2f_inputs['pixel_values'].shape)
+
                 m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+                print('m2f_outputs.shape', m2f_outputs.shape)
+
                 # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
                 sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
+                print('sam_input_points.shape', sam_input_points.shape)
+                print('len(sam_input_points_stack_num)', len(sam_input_points_stack_num))
 
                 sam_outputs = predict_segment_anything(
                     sam_lightning,
@@ -65,6 +72,7 @@ def main():
                     sam_input_points,
                     sam_input_points_stack_num
                 )
+                print('sam_outputs.shape', sam_outputs.shape)
 
                 outputs = unprocess(sam_outputs)
                 save_outputs(outputs, save_path)
