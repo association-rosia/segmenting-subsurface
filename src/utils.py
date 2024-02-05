@@ -138,8 +138,7 @@ def load_mask2former(config, run, device):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = mask2former_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
-    lightning = lightning.to(torch.float16)
-    lightning = lightning.to(device)
+    lightning = lightning.to(dtype=torch.float16, device=device)
 
     return lightning
 
@@ -159,7 +158,6 @@ def load_segment_anything(config, run, device):
 
     path_checkpoint = os.path.join(config['path']['models']['root'], f'{run.name}-{run.id}.ckpt')
     lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
-    lightning = lightning.to(torch.float16)
-    lightning = lightning.to(device)
+    lightning = lightning.to(dtype=torch.float16, device=device)
 
     return lightning
