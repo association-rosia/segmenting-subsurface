@@ -120,7 +120,7 @@ class Mask2formerInference:
         outputs = self.processor.post_process_instance_segmentation(outputs)
         instance_mask = torch.stack([output['segmentation'] for output in outputs])
         instance_mask = torch.moveaxis(instance_mask, 1, 2)
-        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode="bilinear",
+        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
                                        align_corners=False)
         instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
 
