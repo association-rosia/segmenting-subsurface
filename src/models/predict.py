@@ -166,11 +166,11 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
             multimask_output=False
         )
 
-        for i in range(start, end):
+        for i in range(len(sam_outputs.pred_masks)):
             pred_masks = sam_outputs.pred_masks[i].squeeze()
-            pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[i])]
+            pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[start + i])]
             iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
-            iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[i])]
+            iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[start + i])]
             filtered_iou_scores_idx = [i for i, score in enumerate(iou_scores) if score > iou_threshold]
             filtered_pred_masks = pred_masks[filtered_iou_scores_idx]
             filtered_outputs = (tF.sigmoid(filtered_pred_masks).argmax(dim=0)).type(torch.uint8)
