@@ -51,8 +51,6 @@ def main():
 
     with torch.no_grad():
         for item, inputs in tqdm(test_dataloader):
-            print(item['volume'][0])
-
             if item['volume'][0] == 'data/raw/test/test_vol_41.npy':
                 save_path = get_save_path(item, submission_path)
                 m2f_inputs = preprocess(inputs)
@@ -134,12 +132,21 @@ def extract_input_points(args_split, sam_input_points):
 
             valid_label = 1 in torch.unique(opened_m2f_output_i).tolist()
 
-            if valid_label:
-                count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
+            if valid_label or len(indexes) == 1:
+                k = sam_config['num_input_points']
 
-                if count_1 > 1000:
-                    input_points_argw = torch.argwhere(opened_m2f_output_i)
-                    input_points_idx = random.sample(range(len(input_points_argw)), k=sam_config['num_input_points'])
+                if valid_label:
+                    count_1 = torch.unique(opened_m2f_output_i, return_counts=True)[1][1].item()
+
+                    if count_1 > 1000:
+                        input_points_argw = torch.argwhere(opened_m2f_output_i)
+                        input_points_idx = random.sample(range(len(input_points_argw)), k=k)
+                        input_points_coord = input_points_argw[input_points_idx]
+                        input_points.append(input_points_coord)
+
+                elif len(indexes) == 1:
+                    input_points_argw = torch.argwhere(torch.ones(opened_m2f_output_i.shape))
+                    input_points_idx = random.sample(range(len(input_points_argw)), k=k)
                     input_points_coord = input_points_argw[input_points_idx]
                     input_points.append(input_points_coord)
 
