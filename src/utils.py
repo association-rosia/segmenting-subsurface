@@ -43,8 +43,8 @@ def init_wandb(yml_file):
         config = yaml.safe_load(f)
 
     wandb.init(
-        entity='association-rosia',
-        project='segmenting-subsurface',
+        entity=config['wandb']['entity'],
+        project=config['wandb']['project'],
         config=config
     )
 

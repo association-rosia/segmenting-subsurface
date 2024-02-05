@@ -19,37 +19,73 @@ warnings.filterwarnings('ignore')
 
 
 def main():
+    aggregate_masks()
+
     mask2former_id = '3xg8r6lz'
     segment_anything_id = '2snz8a1d'
     config = utils.get_config()
     submission_path = create_path(config, mask2former_id, segment_anything_id)
     test_volumes = md.get_volumes(config, set='test')
     test_volumes = [volume_path for volume_path in test_volumes if not sub_exists(submission_path, volume_path)]
-    test_volumes = split_list(test_volumes, nb_split=torch.cuda.device_count())
+    # test_volumes = split_list(test_volumes, nb_split=torch.cuda.device_count())
 
     with torch.no_grad():
-        list_process = [
-            mp.Process(target=predict_pipeline(
-                mask2former_id,
-                segment_anything_id,
-                config,
-                sub_test_volumes,
-                submission_path,
-                cuda_idx=i)
-            ) for i, sub_test_volumes in enumerate(test_volumes)
-        ]
+        # list_process = [
+        #     mp.Process(target=predict_pipeline(
+        #         mask2former_id,
+        #         segment_anything_id,
+        #         config,
+        #         sub_test_volumes,
+        #         submission_path,
+        #         cuda_idx=i)
+        #     ) for i, sub_test_volumes in enumerate(test_volumes)
+        # ]
+        #
+        # for p in list_process:
+        #     p.start()
+        #
+        # for p in list_process:
+        #     p.join()
 
-        for p in list_process:
-            p.start()
-
-        for p in list_process:
-            p.join()
+        predict_pipeline(
+            mask2former_id,
+            segment_anything_id,
+            config,
+            test_volumes,
+            submission_path,
+            cuda_idx=0)
 
     shutil.make_archive(submission_path, 'zip', submission_path)
 
 
+def aggregate_masks():
+    pred_masks = np.load('pred_masks.npy', allow_pickle=True)
+    output_mask = torch.zeros(pred_masks.shape)
+    iou_scores = [0.9989930391311646, 1.006137728691101, 0.7764780521392822, 1.0123231410980225, 0.7442417740821838,
+                  1.0287566184997559, 0.9961991310119629, 0.7881473302841187, 0.9707614183425903, 0.5027016401290894,
+                  0.9901323318481445, 0.7360000610351562, 0.9490587711334229, 0.7498465776443481, 0.9542047381401062,
+                  0.8122923970222473, 0.9670975804328918, 0.561470627784729, 0.7911033630371094, 0.9725823998451233,
+                  0.994884192943573, 0.9877519607543945, 0.7997927665710449]
+
+    utils.plot_slice(tF.sigmoid(torch.from_numpy(pred_masks)).argmax(0))
+
+    iou_scores_idxs = sorted([(i, score) for i, score in enumerate(iou_scores)], key=lambda x: x[1], reverse=True)
+
+    for i, iou_scores_idx in enumerate(iou_scores_idxs):
+        pred_mask = torch.from_numpy(pred_masks[iou_scores_idx[0]])
+
+        if iou_scores[1] > 1:
+            output_mask[i] = iou_scores[1] * (tF.sigmoid(pred_mask) > 0.5).type(torch.uint8)
+
+    output_mask = output_mask.argmax(0).type(torch.uint8)
+    utils.plot_slice(output_mask)
+
+    print()
+
+
 def predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, submission_path, cuda_idx):
-    device = f'cuda:{cuda_idx}'
+    # device = f'cuda:{cuda_idx}'
+    device = 'cpu'  # TODO
 
     m2f_run = get_run(mask2former_id)
     m2f_lightning, m2f_processor = load_model_processor(config, m2f_run, 'mask2former', device)
@@ -70,15 +106,15 @@ def predict_pipeline(mask2former_id, segment_anything_id, config, test_volumes, 
     test_dataloader = DataLoader(
         dataset=test_dataset,
         batch_size=300,
-        num_workers=m2f_run.config['num_workers'],
+        # num_workers=m2f_run.config['num_workers'],
         shuffle=False
     )
 
     for item, inputs in tqdm(test_dataloader):
         save_path = get_save_path(item, submission_path)
         m2f_inputs = preprocess(inputs, device)
-        m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-        # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
+        # m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
+        m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
 
         sam_input_points, sam_input_points_stack_num = create_sam_input_points(
             m2f_outputs,
@@ -143,6 +179,7 @@ def create_sam_input_points(m2f_outputs, item, sam_run, device):
 
 def extract_input_points(args_split, sam_input_points):
     for m2f_output, volume, slice, sam_config in args_split:
+        m2f_output[m2f_output == 255] = torch.unique(m2f_output).tolist()[-2] + 1
         m2f_output[m2f_output == -1] = torch.max(m2f_output).item() + 1
         indexes = torch.unique(m2f_output).tolist()
 
@@ -202,15 +239,17 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
         start = split
         end = start + batch_size
 
+        sam_lightning = sam_lightning.to(torch.float32)
         sam_outputs = sam_lightning.model(
-            pixel_values=sam_pixel_values[start:end],
-            input_points=sam_input_points[start:end],
+            pixel_values=sam_pixel_values[start:end].to(torch.float32),
+            input_points=sam_input_points[start:end].to(torch.float32),
             multimask_output=False
         )
 
         for i in range(len(sam_outputs.pred_masks)):
             pred_masks = sam_outputs.pred_masks[i].squeeze()
             pred_masks = pred_masks[:(len(pred_masks) - sam_input_points_stack_num[start + i])]
+            # np.save('pred_masks.npy', pred_masks.numpy(), allow_pickle=True)
             iou_scores = sam_outputs.iou_scores[i].squeeze().tolist()
             iou_scores = iou_scores[:(len(iou_scores) - sam_input_points_stack_num[start + i])]
             filtered_iou_scores_idx = [i for i, score in enumerate(iou_scores) if score > iou_threshold]

@@ -92,7 +92,10 @@ class SegSubDataset(Dataset):
         for volume in self.volumes:
             for dim in dims:
                 if dim == '0' or dim == '1':
-                    slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 10, dilation)]
+                    if self.set == 'test':
+                        slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 300, dilation)]
+                    else:
+                        slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 10, dilation)]
                 else:
                     raise ValueError(f'Unknown dimension: {dim}')
 
