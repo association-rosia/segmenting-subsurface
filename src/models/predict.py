@@ -182,6 +182,8 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     sam_input_points_split = split_list(sam_input_points, nb_split=nb_split)
     sam_input_points_stack_num_split = split_list(sam_input_points_stack_num, nb_split=nb_split)
 
+    print('splits created')
+
     list_process = [
         mp.Process(target=predict_segment_anything_split(
             cuda_idx=i,
@@ -209,6 +211,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
 def predict_segment_anything_split(cuda_idx, sam_lightning, sam_pixel_values, sam_input_points,
                                    sam_input_points_stack_num, batch_size, filtered_sam_outputs, iou_threshold=0):
     device = f'cuda:{cuda_idx}'
+    print(device)
     sam_lightning = sam_lightning.to(device)
     sam_pixel_values = sam_pixel_values.to(device)
     sam_input_points = sam_input_points.to(device)
