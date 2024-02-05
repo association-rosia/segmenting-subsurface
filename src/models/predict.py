@@ -54,17 +54,11 @@ def main():
         for item, inputs in tqdm(test_dataloader):
             if item['volume'][0] == 'data/raw/test/test_vol_41.npy':
                 save_path = get_save_path(item, submission_path)
-
                 m2f_inputs = preprocess(inputs)
-                print('m2f_inputs[pixel_values].shape', m2f_inputs['pixel_values'].shape)
-
                 m2f_outputs = predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs)
-                print('m2f_outputs.shape', m2f_outputs.shape)
 
                 # m2f_inputs, m2f_outputs = get_m2f_outputs_example(config, item, m2f_inputs)
                 sam_input_points, sam_input_points_stack_num = create_sam_input_points(m2f_outputs, item, sam_run)
-                print('sam_input_points.shape', sam_input_points.shape)
-                print('len(sam_input_points_stack_num)', len(sam_input_points_stack_num))
 
                 sam_outputs = predict_segment_anything(
                     sam_lightning,
@@ -72,7 +66,6 @@ def main():
                     sam_input_points,
                     sam_input_points_stack_num
                 )
-                print('sam_outputs.shape', sam_outputs.shape)
 
                 outputs = unprocess(sam_outputs)
                 save_outputs(outputs, save_path)
@@ -134,7 +127,6 @@ def extract_input_points(args_split, sam_input_points):
         if len(indexes) == 1:
             m2f_output = m2f_output.unsqueeze(0)
         else:
-            print(indexes)
             m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
             m2f_output = torch.permute(m2f_output, (2, 0, 1))
             m2f_output = m2f_output[indexes]
@@ -184,7 +176,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
-    for split in range(0, 300 - batch_size, batch_size):
+    for split in range(0, 300, batch_size):
         start = split
         end = start + batch_size
         # print(start, end)
