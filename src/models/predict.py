@@ -125,6 +125,7 @@ def extract_input_points(args_split, sam_input_points):
         if len(indexes) == 1:
             m2f_output = m2f_output.unsqueeze(0)
         else:
+            print(indexes)
             m2f_output = tF.one_hot(m2f_output.to(torch.int64)).to(torch.uint8)
             m2f_output = torch.permute(m2f_output, (2, 0, 1))
             m2f_output = m2f_output[indexes]
@@ -165,7 +166,6 @@ def predict_mask2former(m2f_lightning, m2f_processor, m2f_inputs):
     outputs = m2f_lightning(m2f_inputs)
     outputs = m2f_processor.post_process_instance_segmentation(outputs)
     outputs = torch.stack([slice['segmentation'] for slice in outputs])
-    outputs = outputs.to(torch.int16)
 
     return outputs
 
