@@ -156,7 +156,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
-    for split in range(0, 300 - batch_size, batch_size):
+    for split in range(0, 30 - batch_size, batch_size):
         start = split
         end = start + batch_size
         print(start, end)
