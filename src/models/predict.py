@@ -156,7 +156,7 @@ def predict_segment_anything(sam_lightning, m2f_inputs, sam_input_points, sam_in
     filtered_sam_outputs = []
     sam_pixel_values = tvF.resize(m2f_inputs['pixel_values'], (1024, 1024))
 
-    for split in range(0, 30 - batch_size, batch_size):
+    for split in range(0, 300 - batch_size, batch_size):
         start = split
         end = start + batch_size
         print(start, end)
@@ -250,8 +250,8 @@ def get_m2f_outputs_example(config, item, m2f_inputs):
     m2f_outputs = torch.from_numpy(np.load(path, allow_pickle=True)).to(device)
     m2f_outputs = torch.movedim(m2f_outputs, 2, 1)
     m2f_outputs = tvF.resize(m2f_outputs, size=(384, 384), interpolation=tvF.InterpolationMode.NEAREST_EXACT)
-    m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:30]
-    m2f_outputs = m2f_outputs[:30]
+    # m2f_inputs['pixel_values'] = m2f_inputs['pixel_values'][:30]
+    # m2f_outputs = m2f_outputs[:30]
 
     return m2f_inputs, m2f_outputs
 
