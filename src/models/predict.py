@@ -1,4 +1,3 @@
-import multiprocessing as mp
 import os
 import random
 import shutil
@@ -7,6 +6,7 @@ import warnings
 import cv2
 import numpy as np
 import torch
+import torch.multiprocessing as mp
 import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from torch.utils.data import DataLoader
@@ -107,7 +107,7 @@ def split_list(list_to_split, nb_split):
 
 
 def create_sam_input_points(m2f_outputs, item, sam_run, device):
-    mp.set_start_method('spawn', force=True)
+    # mp.set_start_method('spawn', force=True)
     manager = mp.Manager()
     sam_input_points = manager.list()
     volumes = item['volume']
