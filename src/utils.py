@@ -40,12 +40,14 @@ def init_wandb(yml_file):
     path = root if os.path.exists(root) else notebooks
 
     with open(path, 'r') as f:
-        config = yaml.safe_load(f)
+        wandb_config = yaml.safe_load(f)
+
+    config = get_config()
 
     wandb.init(
         entity=config['wandb']['entity'],
         project=config['wandb']['project'],
-        config=config
+        config=wandb_config
     )
 
     return wandb.config
