@@ -63,7 +63,6 @@ class SAMInference:
         self.volume_min = config['data']['min']
         self.volume_max = config['data']['max']
         self.contrast_factor = run.config['contrast_factor']
-        self.processor = utils.get_processor(config, run.config)
  
     def __call__(self):
         model = self.load_model()
@@ -78,7 +77,7 @@ class SAMInference:
                 volume = np.load(volume_path, allow_pickle=True)
                 shape = volume.shape
                 volume = self.preprocess(volume)
-                binary_mask = model(volume)
+                binary_mask = self.predict(volume, model)
                 binary_mask = self.postprocess(binary_mask, shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
@@ -100,18 +99,29 @@ class SAMInference:
         volume = np.moveaxis(volume, 1, 2)
         volume = torch.from_numpy(volume).unsqueeze(1)
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
+        volume = tvF.resize(volume, (1024, 1024))
         volume = torch.repeat_interleave(volume, repeats=3, dim=1)
-        volume = self.processor(images=volume, return_tensors='pt')
         volume = volume.to(device=self.device, dtype=torch.float16)
         
         return volume
+    
+    def predict(self, volume: torch.Tensor, model: torch.nn.Module):
+        list_binary_mask = []
+        for sub_volume in torch.chunk(volume, volume.shape[0] // 15):
+            outputs = model(pixel_values=sub_volume, multimask_output=False)
+            sub_binary_mask = torch.squeeze(outputs['pred_masks'].cpu())
+            list_binary_mask.append(sub_binary_mask)
+            
+        binary_mask = torch.concatenate(list_binary_mask)
+        
+        return binary_mask
 
     @staticmethod
     def postprocess(binary_mask: torch.Tensor, shape):
         binary_mask = torch.moveaxis(binary_mask, 1, 2)
-        binary_mask = tF.interpolate(binary_mask.unsqueeze(dim=1), size=shape[1:], mode="bilinear", align_corners=False)
+        binary_mask = tvF.resize(binary_mask, size=shape[-2:])
         binary_mask = tF.sigmoid(binary_mask) > 0.5
-        binary_mask = binary_mask.squeeze(dim=1).numpy(force=True)
+        binary_mask = binary_mask.numpy(force=True)
         
         return binary_mask
             
@@ -132,9 +142,10 @@ class SAMInference:
         
         path_checkpoint = os.path.join(self.config['path']['models']['root'], f'{self.run.name}-{self.run.id}.ckpt')
         lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=self.device, args=args)
+        model = lightning.model
         
-        return lightning.to(dtype=torch.float16)
+        return model.to(dtype=torch.float16)
    
  
 if __name__ == '__main__':
-    main(run_id='k13mlcpr')
+    main(run_id='2snz8a1d')
