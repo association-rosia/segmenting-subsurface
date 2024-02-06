@@ -9,8 +9,8 @@ num_labels: 1
 num_channels: 3
 contrast_factor: 25
 
-dilation: 1
-num_slices: 10
+dilation: 30
+num_slices: 300
 val_size: 0.2
 dim: '0'
 
