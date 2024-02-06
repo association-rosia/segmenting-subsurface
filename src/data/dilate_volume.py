@@ -20,7 +20,7 @@ def main():
             print(f'Resize {volume_path}')
 
         if label.shape[0] == 300:  # to divide by 30 the number of slices
-            indexes = [i for i in range(0, len(volume), 30)]
+            indexes = [i for i in range(0, len(label), 30)]
             label = label[indexes]
             np.save(label_path, label, allow_pickle=True)
             print(f'Resize {label_path}')
