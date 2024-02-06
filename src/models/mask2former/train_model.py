@@ -74,7 +74,7 @@ def get_lightning(config, wandb_config, checkpoint=None):
     if checkpoint is None:
         lightning = ml.SegSubLightning(args)
     else:
-        path_checkpoint = os.path.join(config['path']['models'], checkpoint)
+        path_checkpoint = os.path.join(config['path']['models']['root'], checkpoint)
         lightning = mask2former_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     return lightning
