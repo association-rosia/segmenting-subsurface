@@ -7,6 +7,7 @@ import wandb
 
 import make_lightning as ml
 import src.data.make_dataset as md
+import src.models.mask2former.make_lightning as mask2former_ml
 from src import utils
 
 warnings.filterwarnings('ignore')
@@ -17,7 +18,7 @@ def main():
     config = utils.get_config()
     wandb_config = utils.init_wandb('mask2former.yml')
     trainer = get_trainer(config)
-    lightning = get_lightning(config, wandb_config)
+    lightning = get_lightning(config, wandb_config, checkpoint='stellar-durian-37-3xg8r6lz.ckpt')
     trainer.fit(model=lightning)
     wandb.finish()
 
@@ -56,7 +57,7 @@ def get_trainer(config):
     return trainer
 
 
-def get_lightning(config, wandb_config):
+def get_lightning(config, wandb_config, checkpoint=None):
     train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
     processor = utils.get_processor(config, wandb_config)
     model = ml.get_model(wandb_config)
@@ -70,7 +71,11 @@ def get_lightning(config, wandb_config):
         'val_volumes': val_volumes
     }
 
-    lightning = ml.SegSubLightning(args)
+    if checkpoint is None:
+        lightning = ml.SegSubLightning(args)
+    else:
+        path_checkpoint = os.path.join(config['path']['models'], wandb_config)
+        lightning = mask2former_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     return lightning
 

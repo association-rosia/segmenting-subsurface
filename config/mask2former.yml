@@ -1,7 +1,7 @@
 dry: false
 
 random_state: 42
-max_epochs: 15
+max_epochs: 10
 
 #model_id: 'facebook/mask2former-swin-large-coco-instance'
 model_id: 'facebook/mask2former-swin-base-coco-instance'
@@ -14,6 +14,7 @@ segformer_id: 'swift-sponge-567-k13mlcpr'
 
 # dilation: 30
 dilation: 1
+# Num of slices per volume # TODO
 val_size: 0.2
 dim: '0'
 
