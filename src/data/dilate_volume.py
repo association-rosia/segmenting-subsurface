@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 
 import make_dataset as md
 from src import utils
@@ -9,7 +8,7 @@ def main():
     config = utils.get_config()
     train_volumes = md.get_volumes(config, set='train')
 
-    for volume_path in tqdm(train_volumes):
+    for volume_path in train_volumes:
         volume = np.load(volume_path, allow_pickle=True)
         label_path = volume_path.replace('seismic', 'horizon_labels')
         label = np.load(label_path, allow_pickle=True)

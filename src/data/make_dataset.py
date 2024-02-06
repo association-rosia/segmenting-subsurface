@@ -35,7 +35,7 @@ class SegSubDataset(Dataset):
         image = self.get_image(item)
         label = self.get_label(item)
 
-        if self.wandb_config['label_type'] == 'instance':
+        if 'mask2former' in self.wandb_config['model_id']:
             inputs = self.create_mask2former_inputs(image, label)
         else:
             inputs = self.processor(
@@ -46,7 +46,7 @@ class SegSubDataset(Dataset):
 
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
-            if 'reshaped_input_sizes' in inputs:
+            if 'sam' in self.wandb_config['model_id']:
                 inputs = self.create_sam_inputs(inputs, label)
             else:
                 inputs['labels'] = self.process_label(inputs['labels'])
@@ -54,15 +54,22 @@ class SegSubDataset(Dataset):
         return item, inputs
 
     def create_sam_inputs(self, inputs, label):
+        label_type = self.wandb_config['label_type']
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
 
         if self.set == 'train':
-            inputs['labels'] = utils.resize_tensor_2d(label, (1024, 1024))
-            inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
-            input_points_coord = torch.argwhere(inputs['labels']).tolist()
-            input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
-            inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
-            inputs['labels'] = utils.resize_tensor_2d(inputs['labels'], (256, 256))
+            if label_type == 'one_hot':
+                random.seed(self.wandb_config['random_state'])
+                inputs['labels'] = utils.resize_tensor_2d(label, (1024, 1024))
+                inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+                input_points_coord = torch.argwhere(inputs['labels']).tolist()
+                input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+                inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+            elif label_type == 'binary':
+                inputs['labels'] = self.process_label(label)
+                inputs['labels'] = utils.resize_tensor_2d(inputs['labels'], (256, 256))
+            else:
+                raise ValueError(f'Wrong label_type for SAM training: {label_type}')
 
         return inputs
 
@@ -87,15 +94,13 @@ class SegSubDataset(Dataset):
     def get_slices(self):
         dims = self.wandb_config['dim'].split(',')
         dilation = self.wandb_config['dilation']
+        num_slices = self.wandb_config['num_slices']
         slices = []
 
         for volume in self.volumes:
             for dim in dims:
                 if dim == '0' or dim == '1':
-                    if self.set == 'test':
-                        slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 300, dilation)]
-                    else:
-                        slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 10, dilation)]
+                    slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, num_slices, dilation)]
                 else:
                     raise ValueError(f'Unknown dimension: {dim}')
 
@@ -182,8 +187,8 @@ class SegSubDataset(Dataset):
 
         if label_type == 'border':
             label = self.get_border_label(label)
-        elif label_type == 'layer':
-            label = self.get_layer_label(label)
+        elif label_type == 'binary':
+            label = self.get_binary_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
         elif label_type == 'one_hot':
@@ -207,12 +212,12 @@ class SegSubDataset(Dataset):
         pad_size = (kernel - 1) // 2
         padded_label = tF.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
-        binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
-        binary_label = 1 - binary_label.squeeze()
+        border_label = (unfolded.std(dim=(4, 5)) == 0).byte()
+        border_label = 1 - border_label.squeeze()
 
-        return binary_label
+        return border_label
 
-    def get_layer_label(self, label):
+    def get_binary_label(self, label):
         binary_label = torch.where(label % 2 == 0, 1, 0)
 
         return binary_label
@@ -351,7 +356,7 @@ if __name__ == '__main__':
 
     config = utils.get_config()
     # compute_image_mean_std(config)
-    wandb_config = utils.init_wandb('mask2former.yml')
+    wandb_config = utils.init_wandb('segment_anything.yml')
 
     model = sam_ml.get_model(wandb_config)
     processor = utils.get_processor(config, wandb_config)
@@ -370,7 +375,7 @@ if __name__ == '__main__':
         dataset=train_dataset,
         batch_size=wandb_config['batch_size'],
         shuffle=False,
-        collate_fn=collate_fn
+        # collate_fn=collate_fn # only for Mask2Former
     )
 
     # get_class_frequencies(train_dataloader)

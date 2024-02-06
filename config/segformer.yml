@@ -9,12 +9,12 @@ num_labels: 1
 num_channels: 3
 contrast_factor: 25
 
-# dilation: 30
 dilation: 1
+num_slices: 10
 val_size: 0.2
 dim: '0'
 
-label_type: 'layer'
+label_type: 'binary'
 
 batch_size: 16
 num_workers: 23
