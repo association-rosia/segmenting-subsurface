@@ -196,7 +196,7 @@ class SegSubLightning(pl.LightningModule):
 
 def get_model(wandb_config):
     model = SamModel.from_pretrained(
-        pretrained_model_name_or_path=wandb_config.model_id,
+        pretrained_model_name_or_path=wandb_config['model_id'],
         ignore_mismatched_sizes=True
     )
 
