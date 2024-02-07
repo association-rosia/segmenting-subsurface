@@ -32,7 +32,6 @@ class SegSubDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.slices[idx]
-        assert self.verify_num_slices(item)
         image = self.get_image(item)
         label = self.get_label(item)
 
@@ -53,14 +52,6 @@ class SegSubDataset(Dataset):
                 inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
-
-    def verify_num_slices(self, item):
-        volume_path = item['volume']
-        volume = np.load(volume_path, allow_pickle=True)
-        label_path = item['volume'].replace('seismic', 'horizon_labels')
-        label = np.load(label_path, allow_pickle=True)
-
-        return volume.shape == label.shape
 
     def create_sam_inputs(self, inputs, label):
         label_type = self.wandb_config['label_type']
