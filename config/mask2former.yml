@@ -1,7 +1,7 @@
 dry: false
 
 random_state: 42
-max_epochs: 10
+max_epochs: 13
 
 model_id: 'facebook/mask2former-swin-base-coco-instance'
 num_channels: 3
@@ -10,8 +10,10 @@ num_labels: 1
 
 num_channels_mask: 2
 segformer_id: 'swift-sponge-567-k13mlcpr'
+# sam_id: 'swift-sponge-567-k13mlcpr'
 
 dilation: 30
+num_slices: 300
 val_size: 0.2
 dim: '0'
 

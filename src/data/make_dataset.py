@@ -10,8 +10,6 @@ import numpy as np
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from src import utils
@@ -24,9 +22,10 @@ class SegSubDataset(Dataset):
         self.wandb_config = args['wandb_config']
         self.processor = args['processor']
         self.volumes = args['volumes']
+        self.set = args['set']
         self.slices = self.get_slices()
-        self.volume_min = args['config']['data']['min']
-        self.volume_max = args['config']['data']['max']
+        self.volume_min = self.config['data']['min']
+        self.volume_max = self.config['data']['max']
 
     def __len__(self):
         return len(self.slices)
@@ -36,7 +35,7 @@ class SegSubDataset(Dataset):
         image = self.get_image(item)
         label = self.get_label(item)
 
-        if self.wandb_config['label_type'] == 'instance':
+        if 'mask2former' in self.wandb_config['model_id']:
             inputs = self.create_mask2former_inputs(image, label)
         else:
             inputs = self.processor(
@@ -47,58 +46,71 @@ class SegSubDataset(Dataset):
 
             inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
 
-            if 'reshaped_input_sizes' in inputs:
+            if 'sam' in self.wandb_config['model_id']:
                 inputs = self.create_sam_inputs(inputs, label)
-                self.plot_slice(inputs['pixel_values'])
-                self.plot_slice(inputs['labels'])
             else:
                 inputs['labels'] = self.process_label(inputs['labels'])
 
         return item, inputs
 
     def create_sam_inputs(self, inputs, label):
+        label_type = self.wandb_config['label_type']
         inputs['pixel_values'] = tvF.resize(inputs['pixel_values'], (1024, 1024))
-        inputs['labels'] = self.process_label(tvF.resize(label.unsqueeze(0), (256, 256)).squeeze())
-        inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
-        input_points_coord = torch.argwhere(inputs['labels']).tolist()
-        input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
-        inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+
+        if self.set == 'train':
+            if label_type == 'one_hot':
+                random.seed(self.wandb_config['random_state'])
+                inputs['labels'] = utils.resize_tensor_2d(label, (1024, 1024))
+                inputs['labels'] = inputs['labels'][random.randint(0, inputs['labels'].shape[0] - 1)]
+                input_points_coord = torch.argwhere(inputs['labels']).tolist()
+                input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
+                inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
+            elif label_type == 'binary':
+                inputs['labels'] = self.process_label(label)
+                inputs['labels'] = utils.resize_tensor_2d(inputs['labels'], (256, 256))
+            else:
+                raise ValueError(f'Wrong label_type for SAM training: {label_type}')
 
         return inputs
-    
+
     def create_mask2former_inputs(self, image, label):
-        label = self.process_label(label)
-        instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        if self.set == 'train':
+            label = self.process_label(label)
+            instance_id_to_semantic_id = {int(i): 0 for i in np.unique(label)}
+        else:
+            instance_id_to_semantic_id = None
+
         inputs = self.processor(
             images=image,
             segmentation_maps=label,
             instance_id_to_semantic_id=instance_id_to_semantic_id,
             return_tensors='pt'
         )
-        
+
         inputs = {k: v.squeeze() if isinstance(v, torch.Tensor) else v[0] for k, v in inputs.items()}
-        
-        return inputs        
+
+        return inputs
 
     def get_slices(self):
         dims = self.wandb_config['dim'].split(',')
         dilation = self.wandb_config['dilation']
+        num_slices = self.wandb_config['num_slices']
         slices = []
 
         for volume in self.volumes:
             for dim in dims:
                 if dim == '0' or dim == '1':
-                    slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, 300, dilation)]
+                    slices += [{'volume': volume, 'dim': dim, 'slice': i} for i in range(0, num_slices, dilation)]
                 else:
                     raise ValueError(f'Unknown dimension: {dim}')
 
         return slices
 
     def build_image(self, slice, segformer_mask):
-        num_channels_mask = self.wandb_config['num_channels_mask']
+        num_channels_mask = self.wandb_config.get('num_channels_mask')
 
         image = None
-        if num_channels_mask == 0:
+        if not num_channels_mask or num_channels_mask == 0:
             image = torch.stack([slice, slice, slice])
         elif num_channels_mask == 1:
             image = torch.stack([slice, segformer_mask, slice])
@@ -114,9 +126,15 @@ class SegSubDataset(Dataset):
     def get_segformer_mask(self, item):
         segformer_mask = None
 
-        if self.wandb_config['segformer_id'] and self.wandb_config['num_channels_mask'] > 0:
-            data_path = self.config['path']['data']['processed']['train']
-            volume_file = item['volume'].split('/')[-1].replace('seismic', 'binary_mask')
+        if self.wandb_config.get('segformer_id') and self.wandb_config['num_channels_mask'] > 0:
+            data_path = self.config['path']['data']['processed'][self.set]
+
+            volume_file = item['volume'].split('/')[-1]
+            if self.set == 'train':
+                volume_file = volume_file.replace('seismic', 'binary_mask')
+            else:
+                volume_file = volume_file.replace('vol', 'bmask')
+
             path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
             segformer_mask = self.get_slice(path, item, dtype=torch.float32)
 
@@ -134,7 +152,7 @@ class SegSubDataset(Dataset):
 
         slice = torch.from_numpy(slice)
         slice = slice.to(dtype=dtype)
-        slice = slice.T
+        slice = torch.movedim(slice, 0, 1)
 
         if type == 'pixel_values':
             slice = self.scale(slice).unsqueeze(0)
@@ -157,17 +175,20 @@ class SegSubDataset(Dataset):
         return image
 
     def get_label(self, item):
-        path = item['volume'].replace('seismic', 'horizon_labels')
-        label = self.get_slice(path, item, dtype=torch.uint8)
+        label = None
+        if self.set != 'test':
+            path = item['volume'].replace('seismic', 'horizon_labels')
+            label = self.get_slice(path, item, dtype=torch.uint8)
 
         return label
 
     def process_label(self, label):
         label_type = self.wandb_config['label_type']
+
         if label_type == 'border':
             label = self.get_border_label(label)
-        elif label_type == 'layer':
-            label = self.get_layer_label(label)
+        elif label_type == 'binary':
+            label = self.get_binary_label(label)
         elif label_type == 'instance':
             label = self.get_instance_label(label)
         elif label_type == 'one_hot':
@@ -182,7 +203,7 @@ class SegSubDataset(Dataset):
     def get_one_hot_label(self, label):
         indexes = torch.unique(label)
         label = torch.permute(tF.one_hot(label.to(torch.int64)), (2, 0, 1))
-        label = label[indexes.tolist()]
+        label = label[indexes.tolist()].to(torch.uint8)
 
         return label
 
@@ -191,12 +212,12 @@ class SegSubDataset(Dataset):
         pad_size = (kernel - 1) // 2
         padded_label = tF.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
-        binary_label = (unfolded.std(dim=(4, 5)) == 0).byte()
-        binary_label = 1 - binary_label.squeeze()
+        border_label = (unfolded.std(dim=(4, 5)) == 0).byte()
+        border_label = 1 - border_label.squeeze()
 
-        return binary_label
+        return border_label
 
-    def get_layer_label(self, label):
+    def get_binary_label(self, label):
         binary_label = torch.where(label % 2 == 0, 1, 0)
 
         return binary_label
@@ -209,20 +230,6 @@ class SegSubDataset(Dataset):
             instance_label = np.where(label == old_label, new_label, instance_label)
 
         return instance_label
-
-    def plot_slice(self, slice):
-        ax = plt.subplot()
-
-        if slice.shape[0] == 3:
-            im = ax.imshow(slice[0], cmap='gray')
-        else:
-            im = ax.imshow(slice, interpolation='nearest')
-
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        plt.colorbar(im, cax=cax)
-
-        plt.show()
 
 
 def collate_fn(batch):
@@ -245,8 +252,8 @@ def collate_fn(batch):
 def get_volumes(config, set):
     root_test = config['path']['data']['raw']['test']
     root_train = config['path']['data']['raw']['train']
-    notebooks_test = os.path.join(os.pardir, root_test)  # get path from notebooks
-    notebooks_train = os.path.join(os.pardir, root_train)  # get path from notebooks
+    notebooks_test = os.path.join(os.pardir, root_test)
+    notebooks_train = os.path.join(os.pardir, root_train)
 
     root = root_test if set == 'test' else root_train
     notebooks = notebooks_test if set == 'test' else notebooks_train
@@ -261,7 +268,8 @@ def get_volumes(config, set):
 
 def get_training_volumes(config, wandb_config):
     training_volumes = get_volumes(config, set='training')
-    train_volumes, val_volumes = train_test_split(training_volumes, test_size=wandb_config['val_size'],
+    train_volumes, val_volumes = train_test_split(training_volumes,
+                                                  test_size=wandb_config['val_size'],
                                                   random_state=wandb_config['random_state'])
 
     return train_volumes, val_volumes
@@ -359,16 +367,18 @@ if __name__ == '__main__':
         'wandb_config': wandb_config,
         'processor': processor,
         'volumes': train_volumes,
+        'set': 'train'
     }
 
     train_dataset = SegSubDataset(args)
     train_dataloader = DataLoader(
         dataset=train_dataset,
         batch_size=wandb_config['batch_size'],
-        shuffle=False
+        shuffle=False,
+        # collate_fn=collate_fn # only for Mask2Former
     )
 
     # get_class_frequencies(train_dataloader)
 
-    for item, inputs in tqdm(train_dataloader):
+    for item, inputs in train_dataloader:
         break

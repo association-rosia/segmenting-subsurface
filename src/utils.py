@@ -1,11 +1,29 @@
 import os
+
+import matplotlib.pyplot as plt
 import torch
+import torchvision.transforms.functional as tvF
 import wandb
 import yaml
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from transformers import AutoImageProcessor
 
+import src.models.mask2former.make_lightning as mask2former_ml
+import src.models.segformer.make_lightning as segformer_ml
+import src.models.segment_anything.make_lightning as segment_anything_ml
 
-def get_config() -> dict:
+
+def get_device():
+    device = 'cpu'
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+
+    return device
+
+
+def get_config():
     root = os.path.join('config', 'config.yml')
     notebooks = os.path.join(os.pardir, root)
     path = root if os.path.exists(root) else notebooks
@@ -22,17 +40,38 @@ def init_wandb(yml_file):
     path = root if os.path.exists(root) else notebooks
 
     with open(path, 'r') as f:
-        config = yaml.safe_load(f)
+        wandb_config = yaml.safe_load(f)
 
-    project_config = get_config()
-    
+    config = get_config()
+
     wandb.init(
-        entity=project_config['wandb']['entity'],
-        project=project_config['wandb']['project'],
-        config=config
+        entity=config['wandb']['entity'],
+        project=config['wandb']['project'],
+        config=wandb_config
     )
 
     return wandb.config
+
+
+def resize_tensor_2d(tensor, size):
+    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size).squeeze(0)
+
+    return resized_tensor
+
+
+def plot_slice(slice, title=None):
+    ax = plt.subplot()
+
+    if slice.shape[0] == 3:
+        im = ax.imshow(slice[0], cmap='gray')
+    else:
+        im = ax.imshow(slice, interpolation='nearest')
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    plt.colorbar(im, cax=cax)
+    plt.title(title)
+    plt.show()
 
 
 def get_processor(config, wandb_config):
@@ -49,9 +88,9 @@ def get_processor(config, wandb_config):
     return processor
 
 
-def get_run_config(run_id: str):
+def get_run(run_id: str):
     project_config = get_config()
-    
+
     api = wandb.Api()
     run = wandb.apis.public.Run(
         client=api.client,

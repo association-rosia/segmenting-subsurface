@@ -9,17 +9,18 @@ num_labels: 1
 num_channels: 3
 contrast_factor: 25
 
-num_channels_mask: 2
-segformer_id: 'swift-sponge-567-k13mlcpr'
+# num_channels_mask: 2
+# segformer_id: 'swift-sponge-567-k13mlcpr'
 
 dilation: 30
+num_slices: 300
 val_size: 0.2
 dim: '0'
 
-label_type: 'one_hot'
-num_input_points: 20
+label_type: 'binary'
+# num_input_points: 20
 
-batch_size: 4
+batch_size: 16
 num_workers: 23
 
 lr: 0.0001

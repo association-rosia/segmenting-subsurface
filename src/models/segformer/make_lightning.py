@@ -132,7 +132,7 @@ class SegSubLightning(pl.LightningModule):
         outputs = outputs[0].numpy(force=True)
         ground_truth = inputs['labels'][0].numpy(force=True)
 
-        self.wandb.log(
+        wandb.log(
             {'val/prediction': wandb.Image(pixel_values, masks={
                 'predictions': {
                     'mask_data': outputs
@@ -161,9 +161,10 @@ class SegSubLightning(pl.LightningModule):
     def train_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.train_volumes
+            'volumes': self.train_volumes,
+            'set': 'train'
         }
 
         dataset_train = md.SegSubDataset(args)
@@ -180,9 +181,10 @@ class SegSubLightning(pl.LightningModule):
     def val_dataloader(self):
         args = {
             'config': self.config,
-            'wandb': self.wandb,
+            'wandb_config': self.wandb_config,
             'processor': self.processor,
-            'volumes': self.val_volumes
+            'volumes': self.val_volumes,
+            'set': 'train'
         }
 
         dataset_val = md.SegSubDataset(args)
@@ -212,11 +214,11 @@ if __name__ == '__main__':
     config = utils.get_config()
     wandb_config = utils.init_wandb('segformer.yml')
     processor, model = get_model(wandb_config)
-    train_volumes, val_volumes = md.get_training_volumes(config, wandb)
+    train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
 
     args = {
         'config': config,
-        'wandb': wandb,
+        'wandb_config': wandb_config,
         'model': model,
         'processor': processor,
         'train_volumes': train_volumes,

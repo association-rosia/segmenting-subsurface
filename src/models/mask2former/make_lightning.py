@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
+import torch
+import wandb
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-import torch
 from transformers import Mask2FormerForUniversalSegmentation
 
 import src.data.make_dataset as md
 from src import utils
-import wandb
 
 
 class SegSubLightning(pl.LightningModule):
@@ -42,7 +42,7 @@ class SegSubLightning(pl.LightningModule):
             self.log_image(inputs, outputs)
 
         return loss
-    
+
     def log_image(self, inputs, outputs):
         pixel_values = inputs['pixel_values'][0][0]
         outputs = self.processor.post_process_instance_segmentation(outputs)
@@ -59,7 +59,7 @@ class SegSubLightning(pl.LightningModule):
                     'mask_data': ground_truth
                 }
             })})
-        
+
     def get_original_mask(self, masks):
         output_mask = torch.zeros_like(masks[0])
 
@@ -69,7 +69,7 @@ class SegSubLightning(pl.LightningModule):
             true_indices = torch.nonzero(mask, as_tuple=False)
             # Mettez à jour le tensor de sortie avec les indices correspondants
             output_mask[true_indices[:, 0], true_indices[:, 1]] = index + 1
-        
+
         return output_mask
 
     def configure_optimizers(self):
@@ -104,7 +104,7 @@ class SegSubLightning(pl.LightningModule):
             'wandb_config': self.wandb_config,
             'processor': self.processor,
             'volumes': self.val_volumes,
-            'set': 'val'
+            'set': 'train'
         }
 
         dataset_val = md.SegSubDataset(args)
@@ -124,14 +124,13 @@ def get_model(wandb_config):
     model = Mask2FormerForUniversalSegmentation.from_pretrained(
         pretrained_model_name_or_path=wandb_config['model_id'],
         num_labels=wandb_config['num_labels'],
-        class_weight=0,
-        mask_weight=0,
-        dice_weight=1,
+        class_weight=1.0,
+        mask_weight=1.0,
+        dice_weight=10.0,
         ignore_mismatched_sizes=True
     )
 
     return model
-
 
 
 if __name__ == '__main__':
@@ -139,11 +138,8 @@ if __name__ == '__main__':
 
     config = utils.get_config()
     wandb_config = utils.init_wandb(yml_file='mask2former.yml')
-
     processor = utils.get_processor(config, wandb_config)
-
     model = get_model(wandb_config)
-
     test_volumes = md.get_volumes(config, set='test')
     train_volumes = md.get_volumes(config, set='train')
 

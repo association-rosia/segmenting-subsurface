@@ -64,7 +64,7 @@ class JaccardLoss(nn.Module):
         else:
             raise ValueError(f'Invalid num_labels: {self.num_labels}')
 
-        return jaccard
+        return 1 - jaccard
 
 
 class JaccardCrossEntropyLoss(nn.Module):
