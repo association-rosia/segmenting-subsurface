@@ -1,7 +1,7 @@
 dry: false
 
 random_state: 42
-max_epochs: 10
+max_epochs: 13
 
 model_id: 'facebook/mask2former-swin-base-coco-instance'
 num_channels: 3
