@@ -207,6 +207,10 @@ def get_model(wandb_config):
         ignore_mismatched_sizes=True
     )
 
+    for name, param in model.named_parameters():
+        if name.startswith('vision_encoder') or name.startswith('prompt_encoder'):
+            param.requires_grad_(False)
+
     return model
 
 
