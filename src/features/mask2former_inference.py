@@ -5,7 +5,6 @@ from multiprocessing import Process
 
 import numpy as np
 import torch
-import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from tqdm import tqdm
 
@@ -119,34 +118,31 @@ class Mask2formerInference:
         return inputs
 
     def postprocess_output(self, output, size):
-        print(output.shape)
-        print(torch.unique(output))
-
         output[output == 255] = torch.unique(output)[-2] + 1
         output[output == -1] = torch.max(output) + 1
-
-        print(output.shape)
-        print(torch.unique(output))
-
+        output = torch.moveaxis(output, 0, 1)
         output = utils.resize_tensor_2d(output, size=size, interpolation=tvF.InterpolationMode.NEAREST_EXACT)
+        output = output.to(torch.uint8)
 
-        print(output.shape)
-        print(torch.unique(output))
-
-        sys.exit(0)
         return output
 
     def postprocess(self, outputs, shape):
         outputs = self.processor.post_process_instance_segmentation(outputs)
         instance_mask = torch.stack([self.postprocess_output(output['segmentation'], shape[1:]) for output in outputs])
-        instance_mask = torch.moveaxis(instance_mask, 1, 2)
-        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
-                                       align_corners=False)
 
-        instance_mask = instance_mask.squeeze(dim=1)
+        # instance_mask = torch.moveaxis(instance_mask, 1, 2)
+        # instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
+        #                                align_corners=False)
+        #
+        # instance_mask = instance_mask.squeeze(dim=1)
+
+        print(instance_mask.shape)
+        
+        sys.exit(0)
+
         instance_mask = instance_mask.numpy(force=True)
 
-        return instance_mask.astype(np.int16)  # range of value : -1 to 255
+        return instance_mask  # range of value : -1 to 255
 
     def load_binary_mask(self, volume_name):
         path = os.path.join(
