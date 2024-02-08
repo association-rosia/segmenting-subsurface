@@ -147,7 +147,7 @@ class SegSubLightning(pl.LightningModule):
 
         if label_type == 'border':
             class_weights = torch.Tensor([15])
-        elif label_type == 'layer':
+        elif label_type == 'binary':
             class_weights = None
         elif label_type == 'semantic':
             class_weights = None
