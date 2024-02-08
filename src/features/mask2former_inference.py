@@ -75,6 +75,7 @@ class Mask2formerInference:
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 instance_mask_path = self.get_mask_path(volume_name)
+
                 if os.path.exists(instance_mask_path):
                     continue
 
@@ -90,11 +91,13 @@ class Mask2formerInference:
             self.config['path']['data']['processed'][self.split],
             f"{self.run.name}-{self.run.id}",
         )
-        path = os.path.join(path, volume_name)
+        
         if self.split == 'train':
-            path = path.replace('seismic', 'instance_mask')
+            volume_name = volume_name.replace('seismic', 'instance_mask')
         else:
-            path = path.replace('test', 'sub')
+            volume_name = volume_name.replace('test', 'sub')
+
+        path = os.path.join(path, volume_name)
 
         return path
 
@@ -118,9 +121,7 @@ class Mask2formerInference:
         outputs = self.processor.post_process_instance_segmentation(outputs)
         instance_mask = torch.stack([output['segmentation'] for output in outputs])
         instance_mask = torch.moveaxis(instance_mask, 1, 2)
-        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1),
-                                       size=shape[1:],
-                                       mode='bilinear',
+        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
                                        align_corners=False)
         instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
 
