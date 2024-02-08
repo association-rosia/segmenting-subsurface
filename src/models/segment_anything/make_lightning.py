@@ -32,6 +32,10 @@ class SegSubLightning(pl.LightningModule):
         self.criterion = self.configure_criterion()
         self.metrics = self.configure_metrics()
 
+        for name, param in self.model.named_parameters():
+            if name.startswith('vision_encoder') or name.startswith('prompt_encoder'):
+                param.requires_grad = False
+
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
 
@@ -206,10 +210,6 @@ def get_model(wandb_config):
         pretrained_model_name_or_path=wandb_config['model_id'],
         ignore_mismatched_sizes=True
     )
-
-    for name, param in model.named_parameters():
-        if name.startswith('vision_encoder') or name.startswith('prompt_encoder'):
-            param.requires_grad_(False)
 
     return model
 
