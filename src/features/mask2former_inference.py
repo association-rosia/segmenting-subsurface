@@ -80,10 +80,9 @@ class Mask2formerInference:
 
                 volume = np.load(volume_path, allow_pickle=True)
                 binary_mask = self.load_binary_mask(volume_name)
-                shape = volume.shape
                 inputs = self.preprocess(volume, binary_mask)
                 outputs = model(inputs)
-                instance_mask = self.postprocess(outputs, shape)
+                instance_mask = self.postprocess(outputs, volume.shape)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
@@ -119,11 +118,13 @@ class Mask2formerInference:
         outputs = self.processor.post_process_instance_segmentation(outputs)
         instance_mask = torch.stack([output['segmentation'] for output in outputs])
         instance_mask = torch.moveaxis(instance_mask, 1, 2)
-        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
+        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1),
+                                       size=shape[1:],
+                                       mode='bilinear',
                                        align_corners=False)
         instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
 
-        return instance_mask.astype(np.int16)
+        return instance_mask.astype(np.uint8)
 
     def load_binary_mask(self, volume_name):
         path = os.path.join(
