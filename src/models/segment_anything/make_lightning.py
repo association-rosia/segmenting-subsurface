@@ -40,7 +40,7 @@ class SegSubLightning(pl.LightningModule):
             outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
         else:
             outputs = self.model(pixel_values=pixel_values, multimask_output=False)
-            
+
         outputs = outputs['pred_masks'].squeeze()
 
         return outputs
