@@ -8,10 +8,6 @@ import yaml
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from transformers import AutoImageProcessor
 
-import src.models.mask2former.make_lightning as mask2former_ml
-import src.models.segformer.make_lightning as segformer_ml
-import src.models.segment_anything.make_lightning as segment_anything_ml
-
 
 def get_device():
     device = 'cpu'
@@ -53,8 +49,8 @@ def init_wandb(yml_file):
     return wandb.config
 
 
-def resize_tensor_2d(tensor, size):
-    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size).squeeze(0)
+def resize_tensor_2d(tensor, size, interpolation=tvF.InterpolationMode.BILINEAR):
+    resized_tensor = tvF.resize(tensor.unsqueeze(0), size=size, interpolation=interpolation).squeeze(0)
 
     return resized_tensor
 

@@ -118,15 +118,27 @@ class Mask2formerInference:
 
         return inputs
 
-    def postprocess_output(self, output):
+    def postprocess_output(self, output, size):
         print(output.shape)
         print(torch.unique(output))
+
+        output[output == 255] = torch.unique(output)[-2] + 1
+        output[output == -1] = torch.max(output) + 1
+
+        print(output.shape)
+        print(torch.unique(output))
+
+        output = utils.resize_tensor_2d(output, size=size, interpolation=tvF.InterpolationMode.NEAREST_EXACT)
+
+        print(output.shape)
+        print(torch.unique(output))
+
         sys.exit(0)
         return output
 
     def postprocess(self, outputs, shape):
         outputs = self.processor.post_process_instance_segmentation(outputs)
-        instance_mask = torch.stack([self.postprocess_output(output['segmentation']) for output in outputs])
+        instance_mask = torch.stack([self.postprocess_output(output['segmentation'], shape[1:]) for output in outputs])
         instance_mask = torch.moveaxis(instance_mask, 1, 2)
         instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
                                        align_corners=False)
