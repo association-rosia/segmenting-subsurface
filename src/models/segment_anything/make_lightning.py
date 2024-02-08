@@ -34,8 +34,13 @@ class SegSubLightning(pl.LightningModule):
 
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
-        input_points = inputs['input_points']
-        outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
+
+        if 'input_points' in inputs:
+            input_points = inputs['input_points']
+            outputs = self.model(pixel_values=pixel_values, input_points=input_points, multimask_output=False)
+        else:
+            outputs = self.model(pixel_values=pixel_values, multimask_output=False)
+            
         outputs = outputs['pred_masks'].squeeze()
 
         return outputs
