@@ -22,7 +22,7 @@ def main():
     config = utils.get_config()
     wandb_config = utils.init_wandb('segment_anything.yml')
     trainer = get_trainer(config, wandb_config)
-    lightning = get_lightning(config, wandb_config, checkpoint='fluent-durian-221-efgls6rt.ckpt')
+    lightning = get_lightning(config, wandb_config)  # , checkpoint='fluent-durian-221-efgls6rt.ckpt')
     trainer.fit(model=lightning)
     wandb.finish()
 
