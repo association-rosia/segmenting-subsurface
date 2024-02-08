@@ -58,7 +58,7 @@ def resize_tensor_2d(tensor, size, interpolation=tvF.InterpolationMode.BILINEAR)
 def plot_slice(slice, title=None):
     ax = plt.subplot()
 
-    if slice.shape[0] == 3:
+    if slice.shape[0] == 3 or slice.shape[0] == 1:
         im = ax.imshow(slice[0], cmap='gray')
     else:
         im = ax.imshow(slice, interpolation='nearest')

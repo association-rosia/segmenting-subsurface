@@ -17,7 +17,7 @@ def main():
         sub_vol_path = os.path.join(sub_vol_pathes, sub_vol_file)
         sub_vol = np.load(sub_vol_path, allow_pickle=True)
         index = random.choices(range(len(sub_vol)), k=1)
-        utils.plot_slice(np.transpose(sub_vol[index]), title=f'Sub slice {index}')
+        utils.plot_slice(sub_vol[index], title=f'Sub slice {index}')
         time.sleep(0.5)
 
 
