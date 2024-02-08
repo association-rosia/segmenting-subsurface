@@ -4,7 +4,6 @@ from multiprocessing import Process
 
 import numpy as np
 import torch
-import torch.nn.functional as tF
 import torchvision.transforms.functional as tvF
 from tqdm import tqdm
 
@@ -19,14 +18,13 @@ def main(run_id):
     config = utils.get_config()
     run = utils.get_run(run_id)
 
-    for split in ['train', 'test']:
-        path_split = os.path.join(
-            config['path']['data']['processed'][split],
-            f"{run.name}-{run.id}",
-        )
+    path_split = os.path.join(
+        config['path']['data']['processed']['test'],
+        f"{run.name}-{run.id}",
+    )
 
-        os.makedirs(path_split, exist_ok=True)
-        multiprocess_make_mask(config, run, split)
+    os.makedirs(path_split, exist_ok=True)
+    multiprocess_make_mask(config, run, split='test')
 
 
 def multiprocess_make_mask(config, run, split):
@@ -76,15 +74,15 @@ class Mask2formerInference:
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 instance_mask_path = self.get_mask_path(volume_name)
+
                 if os.path.exists(instance_mask_path):
                     continue
 
                 volume = np.load(volume_path, allow_pickle=True)
                 binary_mask = self.load_binary_mask(volume_name)
-                shape = volume.shape
                 inputs = self.preprocess(volume, binary_mask)
                 outputs = model(inputs)
-                instance_mask = self.postprocess(outputs, shape)
+                instance_mask = self.postprocess(outputs, volume.shape)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
@@ -92,11 +90,13 @@ class Mask2formerInference:
             self.config['path']['data']['processed'][self.split],
             f"{self.run.name}-{self.run.id}",
         )
-        path = os.path.join(path, volume_name)
+
         if self.split == 'train':
-            path = path.replace('seismic', 'instance_mask')
+            volume_name = volume_name.replace('seismic', 'instance_mask')
         else:
-            path = path.replace('vol', 'imask')
+            volume_name = volume_name.replace('test', 'sub')
+
+        path = os.path.join(path, volume_name)
 
         return path
 
@@ -116,15 +116,27 @@ class Mask2formerInference:
 
         return inputs
 
+    def postprocess_output(self, output, size):
+        values = torch.unique(output).tolist()
+
+        if 255 in values:
+            output[output == 255] = values[-2] + 1
+
+        if -1 in values:
+            output[output == -1] = torch.max(output) + 1
+
+        output = torch.moveaxis(output, 0, 1)
+        output = utils.resize_tensor_2d(output, size=size, interpolation=tvF.InterpolationMode.NEAREST_EXACT)
+        output = output.to(torch.uint8)
+
+        return output
+
     def postprocess(self, outputs, shape):
         outputs = self.processor.post_process_instance_segmentation(outputs)
-        instance_mask = torch.stack([output['segmentation'] for output in outputs])
-        instance_mask = torch.moveaxis(instance_mask, 1, 2)
-        instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
-                                       align_corners=False)
-        instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
+        instance_mask = torch.stack([self.postprocess_output(output['segmentation'], shape[1:]) for output in outputs])
+        instance_mask = instance_mask.numpy(force=True)
 
-        return instance_mask.astype(np.int16)
+        return instance_mask
 
     def load_binary_mask(self, volume_name):
         path = os.path.join(
@@ -178,4 +190,4 @@ class Mask2formerInference:
 
 
 if __name__ == '__main__':
-    main(run_id='3xg8r6lz')
+    main(run_id='xzs93mfw')
