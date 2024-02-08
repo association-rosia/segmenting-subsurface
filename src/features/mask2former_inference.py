@@ -91,7 +91,7 @@ class Mask2formerInference:
             self.config['path']['data']['processed'][self.split],
             f"{self.run.name}-{self.run.id}",
         )
-        
+
         if self.split == 'train':
             volume_name = volume_name.replace('seismic', 'instance_mask')
         else:
@@ -125,7 +125,7 @@ class Mask2formerInference:
                                        align_corners=False)
         instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
 
-        return instance_mask.astype(np.uint8)
+        return instance_mask.astype(np.int16)  # range of value : -1 to 255
 
     def load_binary_mask(self, volume_name):
         path = os.path.join(
