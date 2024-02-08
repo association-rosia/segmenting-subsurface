@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 from multiprocessing import Process
 
@@ -117,13 +118,21 @@ class Mask2formerInference:
 
         return inputs
 
+    def postprocess_output(self, output):
+        print(output.shape)
+        print(torch.unique(output))
+        sys.exit(0)
+        return output
+
     def postprocess(self, outputs, shape):
         outputs = self.processor.post_process_instance_segmentation(outputs)
-        instance_mask = torch.stack([output['segmentation'] for output in outputs])
+        instance_mask = torch.stack([self.postprocess_output(output['segmentation']) for output in outputs])
         instance_mask = torch.moveaxis(instance_mask, 1, 2)
         instance_mask = tF.interpolate(instance_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear',
                                        align_corners=False)
-        instance_mask = instance_mask.squeeze(dim=1).numpy(force=True)
+
+        instance_mask = instance_mask.squeeze(dim=1)
+        instance_mask = instance_mask.numpy(force=True)
 
         return instance_mask.astype(np.int16)  # range of value : -1 to 255
 
@@ -179,4 +188,4 @@ class Mask2formerInference:
 
 
 if __name__ == '__main__':
-    main(run_id='xzs93mfw')
+    main(run_id='3xg8r6lz')
