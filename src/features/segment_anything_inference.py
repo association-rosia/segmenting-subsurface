@@ -75,10 +75,9 @@ class SAMInference:
                     continue
 
                 volume = np.load(volume_path, allow_pickle=True)
-                shape = volume.shape
                 volume = self.preprocess(volume)
                 binary_mask = self.predict(volume, model)
-                binary_mask = self.postprocess(binary_mask, shape)
+                binary_mask = self.postprocess(binary_mask, volume.shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
@@ -147,4 +146,4 @@ class SAMInference:
 
 
 if __name__ == '__main__':
-    main(run_id='2snz8a1d')
+    main(run_id='efgls6rt')
