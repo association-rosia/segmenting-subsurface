@@ -1,5 +1,4 @@
 import os
-import sys
 import warnings
 from multiprocessing import Process
 
@@ -118,12 +117,13 @@ class Mask2formerInference:
         return inputs
 
     def postprocess_output(self, output, size):
-        try:
-            output[output == 255] = torch.unique(output)[-2] + 1
+        values = torch.unique(output).tolist()
+
+        if 255 in values:
+            output[output == 255] = values[-2] + 1
+
+        if -1 in values:
             output[output == -1] = torch.max(output) + 1
-        except:
-            print(torch.unique(output))
-            sys.exit(0)
 
         output = torch.moveaxis(output, 0, 1)
         output = utils.resize_tensor_2d(output, size=size, interpolation=tvF.InterpolationMode.NEAREST_EXACT)
