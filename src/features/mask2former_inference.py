@@ -94,7 +94,7 @@ class Mask2formerInference:
         if self.split == 'train':
             path = path.replace('seismic', 'instance_mask')
         else:
-            path = path.replace('vol', 'sub')
+            path = path.replace('test', 'sub')
 
         return path
 

@@ -1,4 +1,4 @@
-dry: false
+dry: true
 
 random_state: 42
 max_epochs: 10
