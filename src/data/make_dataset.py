@@ -130,6 +130,7 @@ class SegSubDataset(Dataset):
             data_path = self.config['path']['data']['processed'][self.set]
 
             volume_file = item['volume'].split('/')[-1]
+            
             if self.set == 'train':
                 volume_file = volume_file.replace('seismic', 'binary_mask')
             else:

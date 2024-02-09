@@ -95,7 +95,7 @@ class SAMInference:
         if self.run:
             folder_path = f'{self.run.name}-{self.run.id}'
         else:
-            folder_path = self.wandb_config['model_id']
+            folder_path = self.wandb_config['model_id'].replac('/', '_')
 
         return folder_path
 
@@ -108,9 +108,9 @@ class SAMInference:
         return wandb_config
 
     def get_mask_path(self, volume_name):
-        folder_path = self.get_folder_path()
-        path = os.path.join(self.config['path']['data']['processed'][self.split], folder_path)
+        path = os.path.join(self.config['path']['data']['processed'][self.split], self.get_folder_path())
         path = os.path.join(path, volume_name)
+
         if self.split == 'train':
             path = path.replace('seismic', 'binary_mask')
         else:
@@ -171,7 +171,6 @@ class SAMInference:
             lightning = ml.SegSubLightning(args)
 
         model = lightning.model.to(device=self.device, dtype=torch.float16)
-        # model = model.to(dtype=torch.float32)
 
         return model
 

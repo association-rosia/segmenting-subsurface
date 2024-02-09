@@ -4,10 +4,13 @@ random_state: 42
 max_epochs: 100
 criterion: 'JaccardCrossEntropyLoss'
 
-model_id: 'nvidia/segformer-b3-finetuned-ade-512-512'
+model_id: 'nvidia/segformer-b0-finetuned-ade-512-512'
 num_labels: 1
 num_channels: 3
 contrast_factor: 25
+
+num_channels_mask: 1
+segment_anything_id: 'facebook_sam-vit-base'
 
 dilation: 30
 num_slices: 300
