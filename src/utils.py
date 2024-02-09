@@ -85,14 +85,17 @@ def get_processor(config, wandb_config):
 
 
 def get_run(run_id: str):
-    project_config = get_config()
+    run = None
+    
+    if run_id:
+        project_config = get_config()
 
-    api = wandb.Api()
-    run = wandb.apis.public.Run(
-        client=api.client,
-        entity=project_config['wandb']['entity'],
-        project=project_config['wandb']['project'],
-        run_id=run_id,
-    )
+        api = wandb.Api()
+        run = wandb.apis.public.Run(
+            client=api.client,
+            entity=project_config['wandb']['entity'],
+            project=project_config['wandb']['project'],
+            run_id=run_id,
+        )
 
     return run

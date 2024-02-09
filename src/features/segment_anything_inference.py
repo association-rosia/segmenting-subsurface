@@ -17,10 +17,7 @@ def main(run_id):
     run = utils.get_run(run_id)
 
     for split in ['train', 'test']:
-        path_split = os.path.join(
-            config['path']['data']['processed'][split],
-            f"{run.name}-{run.id}",
-        )
+        path_split = os.path.join(config['path']['data']['processed'][split], f'{run.name}-{run.id}')
         os.makedirs(path_split, exist_ok=True)
         multiprocess_make_mask(config, run, split)
 
@@ -62,7 +59,8 @@ class SAMInference:
         self.split = split
         self.volume_min = config['data']['min']
         self.volume_max = config['data']['max']
-        self.contrast_factor = run.config['contrast_factor']
+        self.wandb_config = self.get_wandb_config()
+        self.contrast_factor = self.wandb_config['contrast_factor']
 
     def __call__(self):
         model = self.load_model()
@@ -80,11 +78,25 @@ class SAMInference:
                 binary_mask = self.postprocess(binary_mask, volume.shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
+    def get_folder_path(self):
+        if self.run:
+            folder_path = f'{self.run.name}-{self.run.id}'
+        else:
+            folder_path = self.wandb_config['model_id']
+
+        return folder_path
+
+    def get_wandb_config(self):
+        if self.run:
+            wandb_config = self.wandb_config
+        else:
+            wandb_config = utils.init_wandb('segment_anything.yml')
+
+        return wandb_config
+
     def get_mask_path(self, volume_name):
-        path = os.path.join(
-            self.config['path']['data']['processed'][self.split],
-            f"{self.run.name}-{self.run.id}",
-        )
+        folder_path = self.get_folder_path()
+        path = os.path.join(self.config['path']['data']['processed'][self.split], folder_path)
         path = os.path.join(path, volume_name)
         if self.split == 'train':
             path = path.replace('seismic', 'binary_mask')
@@ -125,13 +137,13 @@ class SAMInference:
         return binary_mask
 
     def load_model(self):
-        train_volumes, val_volumes = md.get_training_volumes(self.config, self.run.config)
-        processor = utils.get_processor(self.config, self.run.config)
-        model = ml.get_model(self.run.config)
+        train_volumes, val_volumes = md.get_training_volumes(self.config, self.wandb_config)
+        processor = utils.get_processor(self.config, self.wandb_config)
+        model = ml.get_model(self.wandb_config)
 
         args = {
             'config': self.config,
-            'wandb_config': self.run.config,
+            'wandb_config': self.wandb_config,
             'model': model,
             'processor': processor,
             'train_volumes': train_volumes,
@@ -146,4 +158,4 @@ class SAMInference:
 
 
 if __name__ == '__main__':
-    main(run_id='efgls6rt')
+    main(run_id=None)
