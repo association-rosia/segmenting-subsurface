@@ -27,7 +27,8 @@ def get_path_split(config, split, run):
         path_split = os.path.join(config['path']['data']['processed'][split], f'{run.name}-{run.id}')
     else:
         wandb_config = utils.init_wandb('segment_anything.yml')
-        path_split = os.path.join(config['path']['data']['processed'][split], wandb_config['model_id'])
+        folder_path = wandb_config['model_id'].replace('/', '_')
+        path_split = os.path.join(config['path']['data']['processed'][split], folder_path)
 
     return path_split
 
