@@ -115,7 +115,6 @@ class SegformerInference:
         binary_mask = tF.interpolate(binary_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear', align_corners=False)
         binary_mask = tF.sigmoid(binary_mask) > 0.5
         binary_mask = binary_mask.squeeze(dim=1)
-        binary_mask = binary_mask.to(torch.bool)
         binary_mask = binary_mask.numpy(force=True)
 
         return binary_mask

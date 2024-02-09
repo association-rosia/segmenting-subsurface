@@ -147,8 +147,6 @@ class SAMInference:
         binary_mask = torch.moveaxis(binary_mask, 1, 2)
         binary_mask = tvF.resize(binary_mask, size=shape[-2:])
         binary_mask = tF.sigmoid(binary_mask) > 0.5
-        print(binary_mask.dtype)
-        # binary_mask = binary_mask.to(torch.bool)
         binary_mask = binary_mask.numpy(force=True)
 
         return binary_mask
