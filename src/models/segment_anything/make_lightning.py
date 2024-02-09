@@ -32,10 +32,6 @@ class SegSubLightning(pl.LightningModule):
         self.criterion = self.configure_criterion()
         self.metrics = self.configure_metrics()
 
-        for name, param in self.model.named_parameters():
-            if name.startswith('vision_encoder') or name.startswith('prompt_encoder'):
-                param.requires_grad = False
-
     def forward(self, inputs):
         pixel_values = inputs['pixel_values']
 

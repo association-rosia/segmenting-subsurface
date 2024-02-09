@@ -1,7 +1,7 @@
-dry: false
+dry: true
 
 random_state: 42
-max_epochs: 50
+max_epochs: 10
 criterion: 'JaccardCrossEntropyLoss'
 
 model_id: 'facebook/sam-vit-base'
@@ -17,7 +17,7 @@ num_slices: 300
 val_size: 0.2
 dim: '0'
 
-label_type: 'binary'
+label_type: 'border'
 # num_input_points: 20
 
 batch_size: 16
