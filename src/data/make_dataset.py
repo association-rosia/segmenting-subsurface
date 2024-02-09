@@ -212,8 +212,8 @@ class SegSubDataset(Dataset):
         pad_size = (kernel - 1) // 2
         padded_label = tF.pad(label, (pad_size, pad_size, pad_size, pad_size), mode='replicate')
         unfolded = padded_label.unfold(2, kernel, 1).unfold(3, kernel, 1)
-        border_label = (unfolded.std(dim=(4, 5)) == 0).byte()
-        border_label = 1 - border_label.squeeze()
+        border_label = unfolded.std(dim=(4, 5)) == 0
+        border_label = 1 - border_label.squeeze().to(torch.uint8)
 
         return border_label
 
