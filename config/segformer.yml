@@ -10,7 +10,7 @@ num_channels: 3
 contrast_factor: 25
 
 num_channels_mask: 1
-segment_anything_id: 'facebook_sam-vit-base'
+model_mask_id: 'facebook_sam-vit-base'
 
 dilation: 30
 num_slices: 300

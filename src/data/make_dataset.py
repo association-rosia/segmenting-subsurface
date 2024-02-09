@@ -123,23 +123,23 @@ class SegSubDataset(Dataset):
 
         return image
 
-    def get_segformer_mask(self, item):
-        segformer_mask = None
+    def get_model_mask(self, item):
+        model_mask = None
 
-        if self.wandb_config.get('segformer_id') and self.wandb_config['num_channels_mask'] > 0:
+        if self.wandb_config.get('model_mask_id') and self.wandb_config['num_channels_mask'] > 0:
             data_path = self.config['path']['data']['processed'][self.set]
 
             volume_file = item['volume'].split('/')[-1]
-            
+
             if self.set == 'train':
                 volume_file = volume_file.replace('seismic', 'binary_mask')
             else:
                 volume_file = volume_file.replace('vol', 'bmask')
 
-            path = os.path.join(data_path, self.wandb_config['segformer_id'], volume_file)
-            segformer_mask = self.get_slice(path, item, dtype=torch.float32)
+            path = os.path.join(data_path, self.wandb_config['model_mask_id'], volume_file)
+            model_mask = self.get_slice(path, item, dtype=torch.float16)  # dtype=torch.float32
 
-        return segformer_mask
+        return model_mask
 
     def get_slice(self, path, item, dtype, type=None):
         volume = np.load(path, allow_pickle=True)
@@ -169,8 +169,8 @@ class SegSubDataset(Dataset):
 
     def get_image(self, item):
         path = item['volume']
-        slice = self.get_slice(path, item, dtype=torch.float32, type='pixel_values')
-        segformer_mask = self.get_segformer_mask(item)
+        slice = self.get_slice(path, item, dtype=torch.float16, type='pixel_values')  # dtype=torch.float32
+        segformer_mask = self.get_model_mask(item)
         image = self.build_image(slice, segformer_mask)
 
         return image

@@ -9,8 +9,7 @@ contrast_factor: 25
 num_labels: 1
 
 num_channels_mask: 2
-segformer_id: 'swift-sponge-567-k13mlcpr'
-# sam_id: 'swift-sponge-567-k13mlcpr'
+model_mask_id: 'swift-sponge-567-k13mlcpr'
 
 dilation: 30
 num_slices: 300
