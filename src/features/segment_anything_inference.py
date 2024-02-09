@@ -87,9 +87,11 @@ class SAMInference:
                     continue
 
                 volume = np.load(volume_path, allow_pickle=True)
+                volume_shape = volume.shape
                 volume = self.preprocess(volume)
                 binary_mask = self.predict(volume, model)
-                binary_mask = self.postprocess(binary_mask, volume.shape)
+                binary_mask = self.postprocess(binary_mask, volume_shape)
+                print(binary_mask.shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
     def get_folder_path(self):
