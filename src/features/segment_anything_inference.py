@@ -34,6 +34,7 @@ def get_path_split(config, split, run):
 
 
 def multiprocess_make_mask(config, run, split):
+    torch.multiprocessing.set_start_method('spawn')
     list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
 
