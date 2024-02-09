@@ -16,10 +16,11 @@ def main(run_id):
     config = utils.get_config()
     run = utils.get_run(run_id)
 
-    for split in ['train', 'test']:
-        path_split = get_path_split(config, split, run)
-        os.makedirs(path_split, exist_ok=True)
-        multiprocess_make_mask(config, run, split)
+    with torch.autocast(device_type='cuda', dtype=torch.float16):
+        for split in ['train', 'test']:
+            path_split = get_path_split(config, split, run)
+            os.makedirs(path_split, exist_ok=True)
+            multiprocess_make_mask(config, run, split)
 
 
 def get_path_split(config, split, run):
@@ -122,7 +123,7 @@ class SAMInference:
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
         volume = tvF.resize(volume, (1024, 1024))
         volume = torch.repeat_interleave(volume, repeats=3, dim=1)
-        volume = volume.to(device=self.device, dtype=torch.float16)
+        volume = volume.to(device=self.device)  # , dtype=torch.float16)
 
         return volume
 
@@ -167,8 +168,9 @@ class SAMInference:
             lightning = ml.SegSubLightning(args)
 
         model = lightning.model
+        # model = model.to(dtype=torch.float16)
 
-        return model.to(dtype=torch.float16)
+        return model
 
 
 if __name__ == '__main__':
