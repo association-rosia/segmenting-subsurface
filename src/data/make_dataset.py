@@ -65,7 +65,7 @@ class SegSubDataset(Dataset):
                 input_points_coord = torch.argwhere(inputs['labels']).tolist()
                 input_points_coord = random.choices(input_points_coord, k=self.wandb_config['num_input_points'])
                 inputs['input_points'] = torch.tensor(input_points_coord).unsqueeze(0)
-            elif label_type == 'binary':
+            elif label_type == 'binary' or label_type == 'border':
                 inputs['labels'] = self.process_label(label)
                 inputs['labels'] = utils.resize_tensor_2d(inputs['labels'], (256, 256))
             else:
