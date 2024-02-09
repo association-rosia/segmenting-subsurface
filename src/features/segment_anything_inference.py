@@ -95,7 +95,7 @@ class SAMInference:
         if self.run:
             folder_path = f'{self.run.name}-{self.run.id}'
         else:
-            folder_path = self.wandb_config['model_id'].replac('/', '_')
+            folder_path = self.wandb_config['model_id'].replace('/', '_')
 
         return folder_path
 
