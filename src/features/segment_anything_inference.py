@@ -33,7 +33,6 @@ def get_path_split(config, split, run):
 
 
 def multiprocess_make_mask(config, run, split):
-    # torch.multiprocessing.set_start_method('spawn')
     list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
 
@@ -47,8 +46,10 @@ def multiprocess_make_mask(config, run, split):
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
+
     for p in list_process:
         p.start()
+
     for p in list_process:
         p.join()
 
@@ -80,6 +81,7 @@ class SAMInference:
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 binary_mask_path = self.get_mask_path(volume_name)
+
                 if os.path.exists(binary_mask_path):
                     continue
 
@@ -143,6 +145,7 @@ class SAMInference:
         binary_mask = torch.moveaxis(binary_mask, 1, 2)
         binary_mask = tvF.resize(binary_mask, size=shape[-2:])
         binary_mask = tF.sigmoid(binary_mask) > 0.5
+        binary_mask = binary_mask.to(torch.bool)
         binary_mask = binary_mask.numpy(force=True)
 
         return binary_mask

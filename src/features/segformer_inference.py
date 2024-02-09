@@ -20,11 +20,7 @@ def main(run_id):
     run = utils.get_run(run_id)
 
     for split in ['train', 'test']:
-        path_split = os.path.join(
-            config['path']['data']['processed'][split],
-            f"{run.name}-{run.id}",
-        )
-
+        path_split = os.path.join(config['path']['data']['processed'][split], f'{run.name}-{run.id}')
         os.makedirs(path_split, exist_ok=True)
         multiprocess_make_mask(config, run, split)
 
@@ -43,8 +39,10 @@ def multiprocess_make_mask(config, run, split):
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
+
     for p in list_process:
         p.start()
+
     for p in list_process:
         p.join()
 
@@ -76,6 +74,7 @@ class SegformerInference:
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 binary_mask_path = self.get_mask_path(volume_name)
+
                 if os.path.exists(binary_mask_path):
                     continue
 
@@ -89,7 +88,7 @@ class SegformerInference:
     def get_mask_path(self, volume_name):
         path = os.path.join(
             self.config['path']['data']['processed'][self.split],
-            f"{self.run.name}-{self.run.id}",
+            f'{self.run.name}-{self.run.id}',
         )
         path = os.path.join(path, volume_name)
         if self.split == 'train':
@@ -113,9 +112,11 @@ class SegformerInference:
     @staticmethod
     def postprocess(binary_mask: torch.Tensor, shape):
         binary_mask = torch.moveaxis(binary_mask, 1, 2)
-        binary_mask = tF.interpolate(binary_mask.unsqueeze(dim=1), size=shape[1:], mode="bilinear", align_corners=False)
+        binary_mask = tF.interpolate(binary_mask.unsqueeze(dim=1), size=shape[1:], mode='bilinear', align_corners=False)
         binary_mask = tF.sigmoid(binary_mask) > 0.5
-        binary_mask = binary_mask.squeeze(dim=1).numpy(force=True)
+        binary_mask = binary_mask.squeeze(dim=1)
+        binary_mask = binary_mask.to(torch.bool)
+        binary_mask = binary_mask.numpy(force=True)
 
         return binary_mask
 
