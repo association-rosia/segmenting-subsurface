@@ -167,8 +167,8 @@ class SAMInference:
         else:
             lightning = ml.SegSubLightning(args)
 
-        model = lightning.model
-        model = model.to(dtype=torch.float32)
+        model = lightning.model.to(device=self.device, dtype=torch.float32)
+        # model = model.to(dtype=torch.float32)
 
         return model
 
