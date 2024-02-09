@@ -11,7 +11,7 @@ class CrossEntropyLoss(nn.Module):
 
     def forward(self, input, target):
         if self.num_labels == 1:
-            print(input.dtype, target.dtype, self.class_weights.dtype)
+            print(input.device, target.device, self.class_weights.device)
             cross_entropy = tF.binary_cross_entropy_with_logits(input, target.float(), pos_weight=self.class_weights)
         elif self.num_labels > 1:
             cross_entropy = tF.cross_entropy(input, target, weight=self.class_weights)
