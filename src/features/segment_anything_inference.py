@@ -17,9 +17,19 @@ def main(run_id):
     run = utils.get_run(run_id)
 
     for split in ['train', 'test']:
-        path_split = os.path.join(config['path']['data']['processed'][split], f'{run.name}-{run.id}')
+        path_split = get_path_split(config, split, run)
         os.makedirs(path_split, exist_ok=True)
         multiprocess_make_mask(config, run, split)
+
+
+def get_path_split(config, split, run):
+    if run:
+        path_split = os.path.join(config['path']['data']['processed'][split], f'{run.name}-{run.id}')
+    else:
+        wandb_config = utils.init_wandb('segment_anything.yml')
+        path_split = os.path.join(config['path']['data']['processed'][split], wandb_config['model_id'])
+
+    return path_split
 
 
 def multiprocess_make_mask(config, run, split):
@@ -150,8 +160,12 @@ class SAMInference:
             'val_volumes': val_volumes
         }
 
-        path_checkpoint = os.path.join(self.config['path']['models']['root'], f'{self.run.name}-{self.run.id}.ckpt')
-        lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=self.device, args=args)
+        if self.run:
+            path_checkpoint = os.path.join(self.config['path']['models']['root'], f'{self.run.name}-{self.run.id}.ckpt')
+            lightning = ml.SegSubLightning.load_from_checkpoint(path_checkpoint, map_location=self.device, args=args)
+        else:
+            lightning = ml.SegSubLightning(args)
+
         model = lightning.model
 
         return model.to(dtype=torch.float16)
