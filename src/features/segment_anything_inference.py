@@ -123,7 +123,7 @@ class SAMInference:
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
         volume = tvF.resize(volume, (1024, 1024))
         volume = torch.repeat_interleave(volume, repeats=3, dim=1)
-        volume = volume.to(device=self.device, dtype=torch.float32)
+        volume = volume.to(device=self.device, dtype=torch.float16)
 
         return volume
 
@@ -167,7 +167,7 @@ class SAMInference:
         else:
             lightning = ml.SegSubLightning(args)
 
-        model = lightning.model.to(device=self.device, dtype=torch.float32)
+        model = lightning.model.to(device=self.device, dtype=torch.float16)
         # model = model.to(dtype=torch.float32)
 
         return model
