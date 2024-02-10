@@ -1,7 +1,7 @@
-dry: false
+dry: true
 
 random_state: 42
-max_epochs: 13
+max_epochs: 25
 
 model_id: 'facebook/mask2former-swin-base-coco-instance'
 num_channels: 3
@@ -9,7 +9,7 @@ contrast_factor: 25
 num_labels: 1
 
 num_channels_mask: 2
-model_mask_id: 'swift-sponge-567-k13mlcpr'
+model_mask_id: 'abundant-lantern-1231-mmw4795a'
 
 dilation: 30
 num_slices: 300
@@ -21,4 +21,4 @@ label_type: 'instance'
 batch_size: 16
 num_workers: 23
 
-lr: 0.0001
+lr: 0.00005
