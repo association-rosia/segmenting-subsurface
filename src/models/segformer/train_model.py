@@ -7,7 +7,7 @@ import wandb
 
 import make_lightning as ml
 import src.data.make_dataset as md
-import src.models.segment_anything.make_lightning as segment_anything_ml
+import src.models.segformer.make_lightning as segformer_ml
 from src import utils
 
 warnings.filterwarnings('ignore')
@@ -74,7 +74,7 @@ def get_lightning(config, wandb_config, checkpoint=None):
         lightning = ml.SegSubLightning(args)
     else:
         path_checkpoint = os.path.join(config['path']['models']['root'], checkpoint)
-        lightning = segment_anything_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
+        lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     return lightning
 
