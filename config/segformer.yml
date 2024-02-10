@@ -22,4 +22,4 @@ label_type: 'binary'
 batch_size: 16
 num_workers: 23
 
-lr: 0.00002
+lr: 0.00001
