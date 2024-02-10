@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
-import make_lightning as ml
+import src.models.segformer.make_lightning as segformer_ml
 import src.data.make_dataset as md
 from src import utils
 
@@ -58,7 +58,7 @@ def get_trainer(config):
 def get_lightning(config, wandb_config):
     train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
     processor = utils.get_processor(config, wandb_config)
-    model = ml.get_model(wandb_config)
+    model = segformer_ml.get_model(wandb_config)
 
     args = {
         'config': config,
@@ -69,7 +69,7 @@ def get_lightning(config, wandb_config):
         'val_volumes': val_volumes
     }
 
-    lightning = ml.SegSubLightning(args)
+    lightning = segformer_ml.SegSubLightning(args)
 
     return lightning
 
