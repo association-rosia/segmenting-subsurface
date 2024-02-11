@@ -22,7 +22,7 @@ def main(run_id):
     multiprocess_make_mask(config, run, split='test')
 
 
-def multiprocess_make_mask(config, run, split):
+def multiprocess_make_mask(config, run, split, batch=300):
     list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
 
@@ -32,7 +32,8 @@ def multiprocess_make_mask(config, run, split):
             cuda_idx=i,
             list_volume=sub_list_volume,
             run=run,
-            split=split
+            split=split,
+            batch=batch
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
@@ -53,12 +54,13 @@ def split_list_volume(list_volume, nb_split):
 
 
 class Mask2formerInference:
-    def __init__(self, config, cuda_idx, list_volume, run, split) -> None:
+    def __init__(self, config, cuda_idx, list_volume, run, split, batch=300) -> None:
         self.config = config
         self.device = f'cuda:{cuda_idx}'
         self.list_volume = list_volume
         self.run = run
         self.split = split
+        self.batch = batch
         self.volume_min = config['data']['min']
         self.volume_max = config['data']['max']
         self.contrast_factor = run.config['contrast_factor']
@@ -77,9 +79,7 @@ class Mask2formerInference:
 
                 volume = np.load(volume_path, allow_pickle=True)
                 binary_mask = self.load_binary_mask(volume_name)
-                inputs = self.preprocess(volume, binary_mask)
-                outputs = model(inputs)
-                instance_mask = self.postprocess(outputs, volume.shape)
+                instance_mask = self.predict(volume, binary_mask, model)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
@@ -94,14 +94,13 @@ class Mask2formerInference:
 
         return path
 
-    def preprocess(self, volume: np.ndarray, binary_mask: np.ndarray):
+    def preprocess(self, volume: torch.Tensor, binary_mask: torch.Tensor):
         volume = (volume - self.volume_min) / (self.volume_max - self.volume_min)
-        volume = np.moveaxis(volume, 1, 2)
-        volume = torch.from_numpy(volume).unsqueeze(1)
+        volume = torch.moveaxis(volume, 1, 2)
+        volume = volume.unsqueeze(1)
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
         volume = volume.squeeze()
-        binary_mask = np.moveaxis(binary_mask, 1, 2)
-        binary_mask = torch.from_numpy(binary_mask)
+        binary_mask = torch.moveaxis(binary_mask, 1, 2)
 
         images = self.build_images(volume, binary_mask)
         images = torch.unbind(images, dim=0)
@@ -109,6 +108,24 @@ class Mask2formerInference:
         inputs = inputs.to(device=self.device, dtype=torch.float16)
 
         return inputs
+    
+    def predict(self, volume: torch.Tensor, binary_mask: torch.Tensor, model: torch.nn.Module):
+        list_instance_mask = []
+        volume = torch.from_numpy(volume)
+        binary_mask = torch.from_numpy(binary_mask)
+        sub_inputs = zip(
+            torch.chunk(volume, volume.shape[0] // self.batch),
+            torch.chunk(binary_mask, binary_mask.shape[0] // self.batch)
+        )
+        for sub_volume, sub_binary_mask in sub_inputs:
+            inputs = self.preprocess(sub_volume, sub_binary_mask)
+            outputs = model(inputs)
+            sub_instance_mask = self.postprocess(outputs, sub_volume.shape)
+            list_instance_mask.append(sub_instance_mask)
+        
+        instance_mask = np.concatenate(list_instance_mask)
+
+        return instance_mask
 
     def postprocess_output(self, output, size):
         values = torch.unique(output).tolist()
@@ -135,7 +152,7 @@ class Mask2formerInference:
     def load_binary_mask(self, volume_name):
         path = os.path.join(
             self.config['path']['data']['processed'][self.split],
-            self.run.config['segformer_id'],
+            self.run.config['model_mask_id'],
         )
         binary_mask_path = os.path.join(path, volume_name)
         if self.split == 'train':
