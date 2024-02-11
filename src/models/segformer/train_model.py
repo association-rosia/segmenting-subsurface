@@ -58,7 +58,7 @@ def get_trainer(config):
 def get_lightning(config, wandb_config, checkpoint=None):
     train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
     processor = utils.get_processor(config, wandb_config)
-    model = ml.get_model(wandb_config)
+    model = segformer_ml.get_model(wandb_config)
 
     args = {
         'config': config,
@@ -70,7 +70,7 @@ def get_lightning(config, wandb_config, checkpoint=None):
     }
 
     if checkpoint is None:
-        lightning = ml.SegSubLightning(args)
+        lightning = segformer_ml.SegSubLightning(args)
     else:
         path_checkpoint = os.path.join(config['path']['models']['root'], checkpoint)
         lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
