@@ -17,12 +17,7 @@ warnings.filterwarnings('ignore')
 def main(run_id):
     config = utils.get_config()
     run = utils.get_run(run_id)
-
-    path_split = os.path.join(
-        config['path']['data']['processed']['test'],
-        f"{run.name}-{run.id}",
-    )
-
+    path_split = os.path.join(config['path']['data']['processed']['test'], f'{run.name}-{run.id}', )
     os.makedirs(path_split, exist_ok=True)
     multiprocess_make_mask(config, run, split='test')
 
@@ -41,8 +36,10 @@ def multiprocess_make_mask(config, run, split):
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
+
     for p in list_process:
         p.start()
+
     for p in list_process:
         p.join()
 
@@ -86,10 +83,7 @@ class Mask2formerInference:
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
-        path = os.path.join(
-            self.config['path']['data']['processed'][self.split],
-            f"{self.run.name}-{self.run.id}",
-        )
+        path = os.path.join(self.config['path']['data']['processed'][self.split], f'{self.run.name}-{self.run.id}')
 
         if self.split == 'train':
             volume_name = volume_name.replace('seismic', 'instance_mask')

@@ -5,8 +5,8 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
-import make_lightning as ml
 import src.data.make_dataset as md
+import src.models.segformer.make_lightning as segformer_ml
 from src import utils
 
 warnings.filterwarnings('ignore')
@@ -17,7 +17,7 @@ def main():
     config = utils.get_config()
     wandb_config = utils.init_wandb('segformer.yml')
     trainer = get_trainer(config)
-    lightning = get_lightning(config, wandb_config)
+    lightning = get_lightning(config, wandb_config, checkpoint='swift-sponge-567-k13mlcpr.ckpt')
     trainer.fit(model=lightning)
     wandb.finish()
 
@@ -55,10 +55,10 @@ def get_trainer(config):
     return trainer
 
 
-def get_lightning(config, wandb_config):
+def get_lightning(config, wandb_config, checkpoint=None):
     train_volumes, val_volumes = md.get_training_volumes(config, wandb_config)
     processor = utils.get_processor(config, wandb_config)
-    model = ml.get_model(wandb_config)
+    model = segformer_ml.get_model(wandb_config)
 
     args = {
         'config': config,
@@ -69,7 +69,11 @@ def get_lightning(config, wandb_config):
         'val_volumes': val_volumes
     }
 
-    lightning = ml.SegSubLightning(args)
+    if checkpoint is None:
+        lightning = segformer_ml.SegSubLightning(args)
+    else:
+        path_checkpoint = os.path.join(config['path']['models']['root'], checkpoint)
+        lightning = segformer_ml.SegSubLightning.load_from_checkpoint(path_checkpoint, args=args)
 
     return lightning
 
