@@ -25,7 +25,7 @@ def main(run_id):
         multiprocess_make_mask(config, run, split)
 
 
-def multiprocess_make_mask(config, run, split):
+def multiprocess_make_mask(config, run, split, batch=300):
     list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
 
@@ -35,7 +35,8 @@ def multiprocess_make_mask(config, run, split):
             cuda_idx=i,
             list_volume=sub_list_volume,
             run=run,
-            split=split
+            split=split,
+            batch=batch
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
@@ -98,7 +99,7 @@ class SegformerInference:
 
         return path
 
-    def preprocess(self, volume: np.ndarray):
+    def preprocess(self, volume: torch.Tensor):
         volume = (volume - self.volume_min) / (self.volume_max - self.volume_min)
         volume = torch.moveaxis(volume, 1, 2)
         volume = volume.unsqueeze(1)
