@@ -10,6 +10,7 @@ from tqdm import tqdm
 import src.data.make_dataset as md
 import src.models.segment_anything.make_lightning as ml
 from src import utils
+import wandb
 
 
 def main(run_id):
@@ -64,7 +65,7 @@ def split_list_volume(list_volume, nb_split):
 
 
 class SAMInference:
-    def __init__(self, config, cuda_idx, list_volume, run, split) -> None:
+    def __init__(self, config, cuda_idx, list_volume, run, split, batch=15) -> None:
         self.config = config
         self.device = f'cuda:{cuda_idx}'
         self.list_volume = list_volume
@@ -74,6 +75,7 @@ class SAMInference:
         self.volume_max = config['data']['max']
         self.wandb_config = self.get_wandb_config()
         self.contrast_factor = self.wandb_config['contrast_factor']
+        self.batch = batch
 
     def __call__(self):
         model = self.load_model()
@@ -92,6 +94,9 @@ class SAMInference:
                 binary_mask = self.predict(volume, model)
                 binary_mask = self.postprocess(binary_mask, volume_shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
+        
+        if self.run is None:
+            wandb.finish()
 
     def get_folder_path(self):
         if self.run:
@@ -133,7 +138,7 @@ class SAMInference:
 
     def predict(self, volume: torch.Tensor, model: torch.nn.Module):
         list_binary_mask = []
-        for sub_volume in torch.chunk(volume, volume.shape[0] // 15):
+        for sub_volume in torch.chunk(volume, volume.shape[0] // self.batch):
             outputs = model(pixel_values=sub_volume, multimask_output=False)
             sub_binary_mask = torch.squeeze(outputs['pred_masks'].cpu())
             list_binary_mask.append(sub_binary_mask)
