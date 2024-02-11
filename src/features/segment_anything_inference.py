@@ -34,7 +34,7 @@ def get_path_split(config, split, run):
     return path_split
 
 
-def multiprocess_make_mask(config, run, split):
+def multiprocess_make_mask(config, run, split, batch=15):
     list_volume = md.get_volumes(config, set=split)
     list_volume_split = split_list_volume(list_volume, torch.cuda.device_count())
 
@@ -44,7 +44,8 @@ def multiprocess_make_mask(config, run, split):
             cuda_idx=i,
             list_volume=sub_list_volume,
             run=run,
-            split=split
+            split=split,
+            batch=batch
         ))
         for i, sub_list_volume in enumerate(list_volume_split)
     ]
