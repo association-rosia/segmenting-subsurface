@@ -86,7 +86,7 @@ def get_processor(config, wandb_config):
 
 def get_run(run_id: str):
     run = None
-    
+
     if run_id:
         project_config = get_config()
 

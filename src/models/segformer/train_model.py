@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
-import make_lightning as ml
 import src.data.make_dataset as md
 import src.models.segformer.make_lightning as segformer_ml
 from src import utils

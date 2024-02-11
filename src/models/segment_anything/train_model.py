@@ -3,18 +3,17 @@ import sys
 import warnings
 
 sys.path.append(os.curdir)
-warnings.filterwarnings('ignore')
 
 import torch
 import pytorch_lightning as pl
 
-import make_lightning as ml
 import src.data.make_dataset as md
 import src.models.segment_anything.make_lightning as segment_anything_ml
 from src import utils
 
 import wandb
 
+warnings.filterwarnings('ignore')
 torch.set_float32_matmul_precision('medium')
 
 
