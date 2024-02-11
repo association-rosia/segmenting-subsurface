@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 def main(run_id):
     config = utils.get_config()
     run = utils.get_run(run_id)
-    path_split = os.path.join(config['path']['data']['processed']['test'], f'{run.name}-{run.id}', )
+    path_split = os.path.join(config['path']['data']['processed']['test'], f'{run.name}-{run.id}')
     os.makedirs(path_split, exist_ok=True)
     multiprocess_make_mask(config, run, split='test')
 
@@ -184,4 +184,4 @@ class Mask2formerInference:
 
 
 if __name__ == '__main__':
-    main(run_id='xzs93mfw')
+    main(run_id='nvbtr9k2')
