@@ -56,12 +56,13 @@ def split_list_volume(list_volume, nb_split):
 
 
 class SegformerInference:
-    def __init__(self, config, cuda_idx, list_volume, run, split) -> None:
+    def __init__(self, config, cuda_idx, list_volume, run, split, batch=300) -> None:
         self.config = config
         self.device = f'cuda:{cuda_idx}'
         self.list_volume = list_volume
         self.run = run
         self.split = split
+        self.batch = batch
         self.volume_min = config['data']['min']
         self.volume_max = config['data']['max']
         self.contrast_factor = run.config['contrast_factor']
@@ -80,9 +81,8 @@ class SegformerInference:
 
                 volume = np.load(volume_path, allow_pickle=True)
                 shape = volume.shape
-                volume = self.preprocess(volume)
-                binary_mask = model(volume)
-                binary_mask = self.postprocess(binary_mask, shape)
+                outputs = self.predict(volume, model)
+                binary_mask = self.postprocess(outputs, shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
     def get_mask_path(self, volume_name):
@@ -100,14 +100,26 @@ class SegformerInference:
 
     def preprocess(self, volume: np.ndarray):
         volume = (volume - self.volume_min) / (self.volume_max - self.volume_min)
-        volume = np.moveaxis(volume, 1, 2)
-        volume = torch.from_numpy(volume).unsqueeze(1)
+        volume = torch.moveaxis(volume, 1, 2)
+        volume = volume.unsqueeze(1)
         volume = tvF.adjust_contrast(volume, contrast_factor=self.contrast_factor)
         volume = torch.repeat_interleave(volume, repeats=3, dim=1)
-        volume = self.processor(images=volume, return_tensors='pt')
-        volume = volume.to(device=self.device, dtype=torch.float16)
+        inputs = self.processor(images=volume, return_tensors='pt')
+        inputs = inputs.to(device=self.device, dtype=torch.float16)
 
-        return volume
+        return inputs
+    
+    def predict(self, volume: torch.Tensor, model: torch.nn.Module):
+        list_outputs = []
+        volume = torch.from_numpy(volume)
+        for sub_volume in torch.chunk(volume, volume.shape[0] // self.batch):
+            inputs = self.preprocess(sub_volume)
+            outputs = model(inputs)
+            list_outputs.append(outputs)
+
+        binary_mask = torch.concatenate(list_outputs)
+
+        return binary_mask
 
     @staticmethod
     def postprocess(binary_mask: torch.Tensor, shape):
