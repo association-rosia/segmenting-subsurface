@@ -3,7 +3,6 @@ import sys
 import warnings
 
 sys.path.append(os.curdir)
-warnings.filterwarnings('ignore')
 
 import torch
 import pytorch_lightning as pl
@@ -14,6 +13,7 @@ from src import utils
 
 import wandb
 
+warnings.filterwarnings('ignore')
 torch.set_float32_matmul_precision('medium')
 
 
@@ -21,7 +21,7 @@ def main():
     config = utils.get_config()
     wandb_config = utils.init_wandb('segment_anything.yml')
     trainer = get_trainer(config, wandb_config)
-    lightning = get_lightning(config, wandb_config, checkpoint='fluent-durian-221-efgls6rt.ckpt')
+    lightning = get_lightning(config, wandb_config)
     trainer.fit(model=lightning)
     wandb.finish()
 
@@ -30,7 +30,7 @@ def get_trainer(config, wandb_config):
     os.makedirs(config['path']['models']['root'], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         save_top_k=1,
-        monitor='val/dice',
+        monitor='val/iou',
         mode='max',
         dirpath=config['path']['models']['root'],
         filename=f'{wandb.run.name}-{wandb.run.id}',
