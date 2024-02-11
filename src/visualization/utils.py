@@ -20,14 +20,14 @@ def get_volume_hollow(volume: np.ndarray):
     return volume_hollow
 
 
-def get_plotly_volume(volume_hollow):
+def get_plotly_volume(volume_hollow, colorscale):
     data = go.Scatter3d(
         x=volume_hollow[:, 0], y=volume_hollow[:, 1], z=volume_hollow[:, 2],
         mode='markers',
         marker=dict(
             size=1,
             color=volume_hollow[:, 3],
-            colorscale='Viridis',
+            colorscale=colorscale,
             opacity=1),
         hoverinfo='skip'
     )
