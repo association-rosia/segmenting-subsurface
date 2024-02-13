@@ -82,15 +82,23 @@ class Mask2formerInference:
                 instance_mask = self.predict(volume, binary_mask, model)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
 
+    def get_folder_path(self):
+        path = os.path.join(
+            self.config['path']['data']['processed'][self.split],
+            f'{self.run.name}-{self.run.id}'
+        )
+        
+        return path
+    
     def get_mask_path(self, volume_name):
-        path = os.path.join(self.config['path']['data']['processed'][self.split], f'{self.run.name}-{self.run.id}')
+        folder_path = self.get_folder_path()
 
         if self.split == 'train':
             volume_name = volume_name.replace('seismic', 'instance_mask')
         else:
             volume_name = volume_name.replace('test', 'sub')
 
-        path = os.path.join(path, volume_name)
+        path = os.path.join(folder_path, volume_name)
 
         return path
 

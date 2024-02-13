@@ -18,7 +18,7 @@ path:
     root: 'submissions'
 
 wandb:
-  entity: 'association-rosia'
+  entity: 'association-rosia-demo'
   project: 'segmenting-subsurface'
 
 data:

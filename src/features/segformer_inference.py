@@ -86,12 +86,17 @@ class SegformerInference:
                 binary_mask = self.postprocess(outputs, shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
 
-    def get_mask_path(self, volume_name):
+    def get_folder_path(self):
         path = os.path.join(
             self.config['path']['data']['processed'][self.split],
             f'{self.run.name}-{self.run.id}',
         )
-        path = os.path.join(path, volume_name)
+        
+        return path
+    
+    def get_mask_path(self, volume_name):
+        forlder_path = self.get_folder_path()
+        path = os.path.join(forlder_path, volume_name)
         if self.split == 'train':
             path = path.replace('seismic', 'binary_mask')
         else:
