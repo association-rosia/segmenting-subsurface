@@ -70,9 +70,8 @@ class SegformerInference:
         self.processor = utils.get_processor(config, run.config)
 
     def __call__(self):
-        model = self.load_model()
-
         with torch.no_grad():
+            model = self.load_model()
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 binary_mask_path = self.get_mask_path(volume_name)
@@ -85,6 +84,9 @@ class SegformerInference:
                 outputs = self.predict(volume, model)
                 binary_mask = self.postprocess(outputs, shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
+                
+            del model.model, model
+        torch.cuda.empty_cache()
 
     def get_folder_path(self):
         path = os.path.join(

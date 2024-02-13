@@ -17,7 +17,7 @@ def main():
     config = utils.get_config()
     wandb_config = utils.init_wandb('mask2former.yml')
     trainer = get_trainer(config)
-    lightning = get_lightning(config, wandb_config, checkpoint='prime-fog-209-xzs93mfw.ckpt')
+    lightning = get_lightning(config, wandb_config)
     trainer.fit(model=lightning)
     wandb.finish()
 

@@ -67,9 +67,8 @@ class Mask2formerInference:
         self.processor = utils.get_processor(config, run.config)
 
     def __call__(self):
-        model = self.load_model()
-
         with torch.no_grad():
+            model = self.load_model()
             for volume_path in tqdm(self.list_volume):
                 volume_name = os.path.basename(volume_path)
                 instance_mask_path = self.get_mask_path(volume_name)
@@ -81,6 +80,9 @@ class Mask2formerInference:
                 binary_mask = self.load_binary_mask(volume_name)
                 instance_mask = self.predict(volume, binary_mask, model)
                 np.save(instance_mask_path, instance_mask, allow_pickle=True)
+        
+            del model.model, model
+        torch.cuda.empty_cache()
 
     def get_folder_path(self):
         path = os.path.join(

@@ -99,3 +99,21 @@ def get_run(run_id: str):
         )
 
     return run
+
+
+class RunDemo:
+    def __init__(self, config_file, id, name) -> None:
+        self.config = self.get_config(config_file)
+        self.name = name
+        self.id = id
+    
+    @staticmethod
+    def get_config(config_file) -> dict:
+        root = os.path.join('config', config_file)
+        notebooks = os.path.join(os.pardir, root)
+        path = root if os.path.exists(root) else notebooks
+
+        with open(path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        return config

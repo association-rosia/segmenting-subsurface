@@ -106,6 +106,9 @@ class SAMInference:
                 binary_mask = self.predict(volume, model)
                 binary_mask = self.postprocess(binary_mask, volume_shape)
                 np.save(binary_mask_path, binary_mask, allow_pickle=True)
+            
+            del model
+        torch.cuda.empty_cache()
 
     def get_folder_path(self):
         if self.run:
