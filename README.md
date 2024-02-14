@@ -2,6 +2,16 @@
 
 <img src='assets/banner.png'>
 
+The competition challenges participants to utilize Meta's Segment Anything Model (SAM) for new use cases beyond
+traditional segmentation tasks in 3D seismic data analysis. The primary objective is to develop solutions capable of
+identifying and mapping all layers within seismic data simultaneously. By doing so, participants aim to accelerate the
+interpretation process, enabling quicker analysis of large datasets and fostering a deeper understanding of Earth's
+structure and geological features. The provided dataset consists of approximately 9,000 pre-interpreted seismic volumes,
+each accompanied by segment masks for model training. These volumes represent diverse geological settings and present
+typical challenges of seismic data interpretation, including complex geology and data processing workflows. The holdout
+data for evaluation mirrors the complexity of the training data, ensuring robust solutions capable of handling diverse
+geologic features across different seismic volumes.
+
 This project was made possible by our compute partners [2CRSI](https://2crsi.com/)
 and [NVIDIA](https://www.nvidia.com/).
 
@@ -10,6 +20,8 @@ and [NVIDIA](https://www.nvidia.com/).
 ## 🛠️ Data processing
 
 ## 🏛️ Model architecture
+
+<img src='assets/approach.png'>
 
 ## #️⃣ Command lines
 
