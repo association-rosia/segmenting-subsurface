@@ -64,7 +64,7 @@ semantic segmentation with transformers. Advances in Neural Information Processi
 ## 📝 Citing
 
 ```
-@misc{UrgellReberga:2023,
+@misc{RebergaUrgell:2024,
   Author = {Louis Reberga and Baptiste Urgell},
   Title = {Segmenting Subsurface},
   Year = {2024},
