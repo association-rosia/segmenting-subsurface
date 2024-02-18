@@ -23,7 +23,7 @@ Our solution was the ... (out of the 10 best teams) on the *Final Leaderboard* w
 🥈  
 🥉  
 
-## 🖼️ Result examples <a name="result-example"></a>
+## 🖼️ Result example
 
 Raw seismic slice | Binary mask | Layers segmentation
 :--------------------:|:--------------------:|:--------------------:|
