@@ -1,4 +1,4 @@
-![image](https://github.com/association-rosia/segmenting-subsurface/assets/65440015/c79185cf-3931-4f1e-9363-f04604683395)# 🌋 Every Layer, Everywhere, All at Once: Segmenting Subsurface
+# 🌋 Every Layer, Everywhere, All at Once: Segmenting Subsurface
 
 <img src='assets/segmenting-subsurface.png'>
 
