@@ -8,10 +8,28 @@ This project was made possible by our compute partners [2CRSI](https://2crsi.com
 and [NVIDIA](https://www.nvidia.com/).
 
 ## 🏆 Challenge ranking
+The score of the challenge was a custom DICE coefficient.  
+Our solution was the best one (out of 225 teams) on the *Prediction Leaderboard* with a DICE coefficient equal to 0.65 🎉.
 
-## 🛠️ Data processing
+*Prediction Leaderboard* podium:  
+🥇 RosIA - 0.65  
+🥈 Kyle Peters - 0.64  
+🥉 Jie Tian - 0.62  
 
-## 🏛️ Model architecture
+Our solution was the ... (out of the 10 best teams) on the *Final Leaderboard* with a DICE coefficient equal to ... 🎉.
+
+*Final Leaderboard* podium:
+🥇  
+🥈  
+🥉  
+
+## 🖼️ Result examples <a name="result-example"></a>
+
+Raw seismic slice | Binary mask | Layers segmentation
+:--------------------:|:--------------------:|:--------------------:|
+![](assets/slices/raw.png) | ![](assets/slices/segfomer.png) | ![](assets/slices/mask2former.png)
+
+## 🏛️ Proposed solution
 
 <img src='assets/approach.png'>
 
