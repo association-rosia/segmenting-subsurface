@@ -25,7 +25,7 @@ Our solution was the ... (out of the 10 best teams) on the *Final Leaderboard* w
 
 ## 🖼️ Result example
 
-Raw seismic slice | Binary mask | Layers segmentation
+Raw seismic slice | Predicted binary mask | Predicted layers
 :--------------------:|:--------------------:|:--------------------:|
 ![](assets/slices/raw.png) | ![](assets/slices/segfomer.png) | ![](assets/slices/mask2former.png)
 
