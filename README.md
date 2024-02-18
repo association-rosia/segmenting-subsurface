@@ -1,6 +1,6 @@
-# 🌋 Every Layer, Everywhere, All at Once: Segmenting Subsurface
+![image](https://github.com/association-rosia/segmenting-subsurface/assets/65440015/c79185cf-3931-4f1e-9363-f04604683395)# 🌋 Every Layer, Everywhere, All at Once: Segmenting Subsurface
 
-<img src='assets/banner.png'>
+<img src='assets/segmenting-subsurface.png'>
 
 This project is part of a competition aiming to expand the capabilities of Meta's Segment Anything Model (SAM) to perform multi-layer segmentation in 3D seismic data. The challenge involves creating machine learning models that can identify and map multiple geological layers simultaneously, thereby streamlining the interpretation process of seismic datasets. With a large training set of around 9,000 labeled seismic volumes representing a wide range of geological conditions, the goal is to develop generalizable and efficient algorithms that can cope with the inherent complexities of seismic data. The models will be evaluated against a complex holdout dataset to ensure robust performance across diverse geological features. This repository documents the development and implementation of our solution to this advanced pattern recognition and data analysis challenge.
 
