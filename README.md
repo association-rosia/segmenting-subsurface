@@ -14,14 +14,14 @@ Our solution was the best one (out of 225 teams) on the *Prediction Leaderboard*
 *Prediction Leaderboard* podium:  
 🥇 RosIA - 0.65  
 🥈 Kyle Peters - 0.64  
-🥉 Jie Tian - 0.62  
+🥉 Harshit Sheoran - 0.62  
 
-Our solution was the ... (out of the 10 best teams) on the *Final Leaderboard* with a DICE coefficient equal to ... 🎉.
+Our solution was the best one (out of the 10 best teams) on the *Final Leaderboard* with a DICE coefficient equal to 0.67 🎉.
 
 *Final Leaderboard* podium:  
-🥇  
-🥈  
-🥉  
+🥇 RosIA - 0.67 
+🥈 Kyle Peters 
+🥉 Jie Tian 
 
 ## 🖼️ Result example
 
