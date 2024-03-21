@@ -19,9 +19,9 @@ Our solution was the best one (out of 225 teams) on the *Prediction Leaderboard*
 Our solution was the best one (out of the 10 best teams) on the *Final Leaderboard* with a DICE coefficient equal to 0.67 🎉.
 
 *Final Leaderboard* podium:  
-🥇 RosIA - 0.67 
-🥈 Kyle Peters 
-🥉 Jie Tian 
+🥇 RosIA - 0.67  
+🥈 Kyle Peters  
+🥉 Jie Tian  
 
 ## 🖼️ Result example
 
